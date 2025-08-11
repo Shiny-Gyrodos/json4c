@@ -1,0 +1,20 @@
+[
+	{
+		"name": "Tommy",
+		"age": 54,
+		"married": true,
+		"hobbies": ["skiing", "painting"]
+	},
+	{
+		"name": "Linda",
+		"age": 26,
+		"married": false,
+		"hobbies": ["tiktok"]
+	},
+	{
+		"name": "Keagan",
+		"age": 8,
+		"married": false,
+		"hobbies": ["picking-nose"]
+	}
+]
