@@ -284,13 +284,10 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 			}
 			string = temp;
 		}
-		int i;
-		for (i = 0; delimiters[i] != '\0'; i++) {
-			if (nextChar == delimiters[i]) {
-				ungetc(nextChar, stream);
-				string[count] = '\0';
-				return string;
-			}
+		if (strchr(delimiters, nextChar)) {
+			ungetc(nextChar, stream);
+			string[count] = '\0';
+			return string;
 		}
 		string[count++] = nextChar;
 	}
