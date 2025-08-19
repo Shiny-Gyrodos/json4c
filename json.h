@@ -1,5 +1,5 @@
-#ifndef C_JSONV2
-#define C_JSONV2
+#ifndef C_JSON
+#define C_JSON
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -53,4 +53,4 @@ JsonNode* json_parseFile(char*);
 bool json_isValid(char*);
 JsonNode* json_get(JsonNode*, size_t, ...);
 
-#endif // C_JSONV2
+#endif // C_JSON
