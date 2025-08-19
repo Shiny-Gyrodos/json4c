@@ -1,235 +1,80 @@
-#include <string.h>
+#include <stdint.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
-#include <stdarg.h> 
+#include <string.h>
 
-#include "json.h"
+#include "jsonv2.h"
 
-JsonNode* jnode_create(JsonNode* parent, char* identifier, JsonType type) {
-	JsonNode* node = malloc(sizeof(JsonNode));
-	if (!node) return NULL;
-	node->parent = parent;
-	node->identifier = identifier;
-	node->type = type;
-	if (type & JSON_COMPLEX) {
-		node->value.jsonComplex.nodes = calloc(16, sizeof(JsonNode*));
-		if (!node->value.jsonComplex.nodes) return NULL;
-		node->value.jsonComplex.max = 16;
-		node->value.jsonComplex.count = 0;
+#define PRIVATE_DEFINITIONS
+// Parsers
+typedef JsonNode* (*parserFunc)(FILE*);
+typedef JsonNode* parser(FILE* jstream);
+static parser _skip;
+static parser _object;
+static parser _array;
+static parser _boolean;
+static parser _string;
+static parser _number;
+static parser _null;
+
+// Helpers
+static parserFunc _getParser(int);
+static int _fpeek(FILE*);
+static char* _scanUntil(FILE*, char*);
+static char* _scanWhile(FILE*, bool (*)(int));
+#undef PRIVATE_DEFINITIONS
+
+#define PUBLIC_IMPLEMENTATIONS
+JsonNode* jnode_create(JsonValue value) {
+	JsonNode* jnode = malloc(sizeof(JsonNode));
+	if (!jnode) return NULL;
+	jnode->parent = NULL;
+	jnode->identifier = NULL;
+	jnode->value = value;
+	if (IS_COMPLEX(value.type)) {
+		puts("( jcomplex ) parsed");
+		jnode->value.jcomplex.nodes = calloc(16, sizeof(JsonNode*));
+		jnode->value.jcomplex.max = 16; // TODO: remove numeric literals
+		jnode->value.jcomplex.count = 0;
 	}
-	return node;
+	return jnode;
 }
 
-// TODO: Should this function assign child->parent to parent?
 void jnode_append(JsonNode* parent, JsonNode* child) {
-	if (!parent || !child || !(parent->type & JSON_COMPLEX)) return;
-	if (parent->value.jsonComplex.count >= parent->value.jsonComplex.max) {
-		parent->value.jsonComplex.max *= 2;
-		parent->value.jsonComplex.nodes = realloc(
-			parent->value.jsonComplex.nodes, 
-			parent->value.jsonComplex.max * sizeof(JsonNode*)
-		);
-		if (!parent->value.jsonComplex.nodes) return; // TODO: Add error message.
+	if (!parent || !child || !IS_COMPLEX(parent->value.type)) return;
+	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
+		parent->value.jcomplex.max *= 2;
+		void* temp = realloc(parent->value.jcomplex.nodes, sizeof(JsonNode*) * parent->value.jcomplex.max);
+		if (!temp) return;
+		parent->value.jcomplex.nodes = temp;
 	}
-	parent->value.jsonComplex.nodes[parent->value.jsonComplex.count] = child;
-	parent->value.jsonComplex.count++;
-	printf("count = %zu\n", parent->value.jsonComplex.count);
+	parent->value.jcomplex.nodes[parent->value.jcomplex.count] = child;
+	parent->value.jcomplex.count++;
 }
 
-void jnode_free(JsonNode* node) {
-	free(node->identifier);
-	if (node->type & JSON_COMPLEX) {
+void jnode_free(JsonNode* jnode) {
+	if (IS_COMPLEX(jnode->value.type)) {
 		int i;
-		for (i = 0; i < node->value.jsonComplex.count; i++) {
-			jnode_free(node->value.jsonComplex.nodes[i]);
+		for (i = 0; i < jnode->value.jcomplex.count; i++) {
+			jnode_free(jnode->value.jcomplex.nodes[i]);
 		}
+	} else if (jnode->value.type == JSON_STRING) {
+		free(jnode->value.string);
 	}
-	free(node);
+	free(jnode->identifier);
+	free(jnode);
 }
 
-
-static int _fpeek(FILE* stream) {
-	int nextChar = fgetc(stream);
-	return nextChar == EOF ? EOF : ungetc(nextChar, stream);
-}
-
-static char* _scanUntil(FILE* stream, char* delimiters) {
-	char* string = malloc(8);
-	if (!string) return NULL;
-	size_t max = 8;
-	size_t count = 0;
-	int nextChar = fgetc(stream);
-	// Should handle encountering EOF somehow.
-	while (nextChar != EOF) {
-		if (count >= max) {
-			max *= 2;
-			char* temp = realloc(string, max);
-			if (!temp) {
-				free(string);
-				return NULL;
-			}
-			string = temp;
-		}
-		int i;
-		for (i = 0; delimiters[i] != '\0'; i++) {
-			if (nextChar == delimiters[i]) {
-				ungetc(nextChar, stream);
-				printf("( %c ) pushed\n", nextChar);
-				string[count] = '\0';
-				return string;
-			}
-		}
-		string[count] = nextChar;
-		count++;
-		printf("( %c ) parsed\n", nextChar);
-		nextChar = fgetc(stream);
-	}
-	free(string);
-	return NULL; // I guess this sort of indicates EOF was reached?
-}
-
-static int _nextNonWhitespace(FILE* stream) {
-	int nextChar;
-	do {
-		nextChar = fgetc(stream);
-	} while (nextChar != EOF && isspace(nextChar));
-	if (nextChar == EOF) return EOF;
-	return ungetc(nextChar, stream);
-}
-
-// TODO: It would make more sense for this function to return "union JsonValue"
-static JsonNode* _parseValue(char* valueString) {
-	size_t length = strlen(valueString);
-	while (length > 0 && isspace(valueString[length - 1])) {
-		length--;
-	}
-	char* string = malloc(length + 1); // Make room for '\0'
-	memcpy(string, valueString, length);
-	string[length] = '\0';
-	
-	JsonNode* node;
-	if (strcmp("true", string) == 0) {
-		puts("( true ) parsed");
-		node = jnode_create(NULL, NULL, JSON_BOOL);
-		node->value.boolean = true;
-	} else if (strcmp("false", string) == 0) {
-		puts("( false ) parsed");
-		node = jnode_create(NULL, NULL, JSON_BOOL);
-		node->value.boolean = false;
-	} else if (strcmp("null", string) == 0) {
-		puts("( null ) parsed");
-		node = jnode_create(NULL, NULL, JSON_NULL);
-	} else if (string[0] == '"' && string[length - 1] == '"') { // TODO: Fix sketchy check
-		puts("( string ) parsed");
-		node = jnode_create(NULL, NULL, JSON_STRING);
-		node->value.string = malloc(length - 1);
-		memcpy(node->value.string, string + 1, length - 1);
-		node->value.string[length - 2] = '\0';
-	} else if (strchr(string, '.')) {
-		puts("( real ) parsed");
-		node = jnode_create(NULL, NULL, JSON_REAL);
-		node->value.real = atof(string);
-	} else { // int
-		puts("( integer ) parsed");
-		node = jnode_create(NULL, NULL, JSON_INT);
-		node->value.integer = atoi(string);
-	}
-	return node;
-}
-
-// TODO: Could use a serious refactor, there is a lot of duplicate code,
-// TODO: and there is a lack of clarity on when a char is consumed,
-// TODO: and whose responsibility it is to consume chars.
-static JsonNode* _parseNext(FILE* jsonStream, JsonNode* parent) {
-	JsonNode* node;
-	char* identifier = NULL;
-	
-	int nextChar = _nextNonWhitespace(jsonStream);
-	if (nextChar == EOF) return parent;
-	printf("( %c ) parsed\n", (char)_fpeek(jsonStream));
-	
-	switch ((char)nextChar) {
-		case ',':
-		case ':': // TODO: Add syntax checking
-			fgetc(jsonStream); // Consume useless character.
-			return _parseNext(jsonStream, parent);
-		case '{':
-			fgetc(jsonStream);
-			puts("object start parsed");
-			node = jnode_create(parent, identifier, JSON_OBJECT);
-			jnode_append(parent, node);
-			return _parseNext(jsonStream, node);
-		case '[':
-			fgetc(jsonStream);
-			puts("array start parsed");
-			node = jnode_create(parent, identifier, JSON_ARRAY);
-			jnode_append(parent, node);
-			return _parseNext(jsonStream, node);
-		case '}':
-		case ']':
-			fgetc(jsonStream);
-			puts("object or array end parsed");
-			return parent->parent == NULL ?
-				   parent :
-				   _parseNext(jsonStream, parent->parent);
-		case '"': {
-			fgetc(jsonStream); // Consume the '"'
-			char* string = _scanUntil(jsonStream, "\"");
-			fgetc(jsonStream); // Consume the '"'
-			printf("( %c ) parsed\n", (char)_fpeek(jsonStream));
-			if (_nextNonWhitespace(jsonStream) == ':') {
-				fgetc(jsonStream); // Consume the ':'	
-				puts("identifier parsed");
-				nextChar = _nextNonWhitespace(jsonStream);
-				printf("( %c ) parsed\n", (char)nextChar);
-				if (nextChar == '{') {
-					puts("object start parsed");
-					fgetc(jsonStream); // Consume '{'
-					node = jnode_create(parent, string, JSON_OBJECT);
-					jnode_append(parent, node);
-					return _parseNext(jsonStream, node);
-				} else if (nextChar == '[') {
-					puts("array start parsed");
-					fgetc(jsonStream); // Consume '['
-					node = jnode_create(parent, string, JSON_ARRAY);
-					jnode_append(parent, node);
-					return _parseNext(jsonStream, node);
-				}
-				identifier = string;
-				// Drop through
-			} else {
-				// TODO: Remove sort of duplicate code
-				puts("string literal parsed");
-				if (_fpeek(jsonStream) == ',') {
-					fgetc(jsonStream); // Consume the ','
-				}
-				node = jnode_create(parent, identifier, JSON_STRING);
-				node->value.string = string;
-				jnode_append(parent, node);
-				return _parseNext(jsonStream, parent);
-			}
-		}
-		default:
-			puts("primitive parsed");
-			char* valueString = _scanUntil(jsonStream, ",]}");
-			printf("valueString = %s\n", valueString);
-			if (_fpeek(jsonStream) == ',') {
-				fgetc(jsonStream); // Consume the ','
-			}
-			node = _parseValue(valueString);
-			node->identifier = identifier;
-			node->parent = parent;
-			jnode_append(parent, node);
-			return _parseNext(jsonStream, parent);
-	}
-	return NULL;
-}
 
 JsonNode* json_parseFile(char* path) {
 	const char* READ = "r";
-	FILE* jsonStream = fopen(path, READ);
-	JsonNode* node = _parseNext(jsonStream, NULL); // Start the parser.
-	fclose(jsonStream);
+	FILE* jstream = fopen(path, READ);
+	int firstChar = _fpeek(jstream);
+	if (firstChar == '\0') return NULL;
+	parserFunc firstParser = _getParser(firstChar);
+	if (!firstParser) return NULL;
+	JsonNode* node = firstParser(jstream);
 	return node;
 }
 
@@ -243,30 +88,26 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	va_start(args, count);
 	while (count --> 0) { // Slide down-to operator :D 
 		if (!root) return NULL;
-		printf("root->type = %d\n", root->type);
-		if (root->type == JSON_OBJECT) {
+		if (root->value.type == JSON_OBJECT) {
 			char* string = va_arg(args, char*);
 			int i = 0;
 			while (true) {
-				if (i >= root->value.jsonComplex.count) {
-					puts("oh no");
+				if (i >= root->value.jcomplex.count) {
 					return NULL;
 				}
-				JsonNode* node = root->value.jsonComplex.nodes[i];
+				JsonNode* node = root->value.jcomplex.nodes[i];
 				if (!node) {
-					puts("oh boy");
 					return NULL;
 				}
-				printf("( %s ) identifier compared\n", node->identifier);
 				if (strcmp(string, node->identifier) == 0) {
 					root = node;
 					break;
 				}
 				i++;
 			}
-		} else if (root->type == JSON_ARRAY) {
+		} else if (root->value.type == JSON_ARRAY) {
 			int index = va_arg(args, int);
-			root = root->value.jsonComplex.nodes[index];
+			root = root->value.jcomplex.nodes[index];
 		} else {
 			// TODO: Handle error
 		}
@@ -274,3 +115,214 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	va_end(args);
 	return root;
 }
+#undef PUBLIC_IMPLEMENTATIONS
+
+#define PRIVATE_IMPLEMENTATIONS
+// Predicates
+static bool _numberPredicate(int character) { return isdigit(character); }
+static bool _letterPredicate(int character) { return isalpha(character); }
+
+static JsonNode* _skip(FILE* jstream) {
+	puts("entered _skip");
+	fgetc(jstream);
+	puts("exited _skip");
+	return jnode_create((JsonValue){JSON_INVALID, 0});
+}
+
+static JsonNode* _object(FILE* jstream) {
+	puts("entered _object");
+	fgetc(jstream); // Consume the '{'
+	JsonNode* jnode = jnode_create((JsonValue){JSON_OBJECT, 0});
+	char* identifier = NULL;
+	int nextChar;
+	while ((nextChar = _fpeek(jstream)) != '}') {
+		parserFunc currentParser = _getParser(nextChar);
+		JsonNode* appendee = currentParser(jstream);
+		if (appendee->value.type == JSON_INVALID) {
+			free(appendee);
+			continue;
+		} else if (!identifier && appendee->value.type == JSON_STRING) {
+			// We have an identifier!
+			identifier = appendee->value.string;
+			printf("identifier = %s\n", identifier);
+		} else {
+			appendee->parent = jnode;
+			appendee->identifier = identifier;
+			jnode_append(jnode, appendee);
+			identifier = NULL;
+		}
+	}
+	fgetc(jstream); // Consume the '}'
+	puts("exited _object");
+	return jnode;
+}
+
+static JsonNode* _array(FILE* jstream) {
+	puts("entered _array");
+	fgetc(jstream); // Consume the '['
+	JsonNode* jnode = jnode_create((JsonValue){JSON_ARRAY, 0});
+	int nextChar;
+	while ((nextChar = _fpeek(jstream)) != ']') {
+		parserFunc currentParser = _getParser(nextChar);
+		JsonNode* appendee = currentParser(jstream);
+		if (appendee->value.type == JSON_INVALID) {
+			free(appendee);
+			continue;
+		}
+		appendee->parent = jnode;
+		jnode_append(jnode, appendee);
+	}
+	fgetc(jstream); // Consume the ']'
+	puts("exited _array");
+	return jnode;
+}
+
+static JsonNode* _boolean(FILE* jstream) {
+	puts("entered _boolean");
+	char* boolString = _scanWhile(jstream, _letterPredicate);
+	JsonNode* jnode;
+	if (strcmp(boolString, "true") == 0) {
+		puts("( true ) parsed");
+		jnode = jnode_create((JsonValue){JSON_BOOL, .boolean = true});
+	} else if (strcmp(boolString, "false") == 0) {
+		puts("( false ) parsed");
+		jnode = jnode_create((JsonValue){JSON_BOOL, .boolean = false});
+	} else {
+		// TODO: handle error
+	}
+	puts("exited _boolean");
+	return jnode;
+}
+
+static JsonNode* _string(FILE* jstream) {
+	puts("entered _string");
+	fgetc(jstream); // Consume the '"'
+	char* string = _scanUntil(jstream, "\"");
+	fgetc(jstream); // Consume the other '"'
+	printf("( %s ) parsed\n", string);
+	puts("exited _string");
+	return jnode_create((JsonValue){JSON_STRING, .string = string});
+}
+
+static JsonNode* _number(FILE* jstream) {
+	puts("entered _number");
+	char* numberString = _scanWhile(jstream, _numberPredicate);
+	if (_fpeek(jstream) == '.') {
+		char* appendee = _scanUntil(jstream, ", \t\n}]");
+		numberString = strcat(numberString, appendee);
+		float real = (float)atof(numberString);
+		printf("( %f ) parsed\n", real);
+		puts("exited _number");
+		return jnode_create((JsonValue){JSON_REAL, .real = real});
+	}
+	int integer = atoi(numberString);
+	printf("( %d ) parsed\n", integer);
+	puts("exited _number");
+	return jnode_create((JsonValue){JSON_INT, .integer = integer});
+}
+
+static JsonNode* _null(FILE* jstream) {
+	puts("entered _null");
+	char* nullString = _scanWhile(jstream, _letterPredicate);
+	JsonNode* jnode;
+	if (strcmp(nullString, "null") == 0) {
+		puts("( null ) parsed");
+		jnode = jnode_create((JsonValue){JSON_NULL, 0});
+	} else {
+		// TODO: handle error
+	}
+	puts("exited _null");
+	return jnode;
+}
+
+static parserFunc _getParser(int character) {
+	if (character == EOF) return NULL;
+	switch (character) {
+		case '{':
+		case '}':
+			return _object;
+		case '[':
+		case ']':
+			return _array;
+		case '"':
+			return _string;
+		case ',':
+		case ':':
+			return _skip;
+		case 't': // true
+		case 'f': // false
+			return _boolean;
+		case 'n': // null
+			return _null;
+		default: // number OR whitespace
+			if (isdigit(character)) {
+				return _number;
+			}
+			return _skip;
+	}
+}
+
+static int _fpeek(FILE* stream) {
+	int character = fgetc(stream);
+	return character == EOF ? EOF : ungetc(character, stream);
+}
+
+static char* _scanUntil(FILE* stream, char* delimiters) {
+	if (!stream || !delimiters) return NULL;
+	char* string = malloc(8);
+	if (!string) return NULL;
+	size_t max = 8;
+	size_t count = 0;
+	int nextChar;
+	while ((nextChar = fgetc(stream)) != EOF) {
+		if (count >= max) {
+			max *= 2;
+			char* temp = realloc(string, max);
+			if (!temp) {
+				free(string);
+				return NULL;
+			}
+			string = temp;
+		}
+		int i;
+		for (i = 0; delimiters[i] != '\0'; i++) {
+			if (nextChar == delimiters[i]) {
+				ungetc(nextChar, stream);
+				string[count] = '\0';
+				return string;
+			}
+		}
+		string[count++] = nextChar;
+	}
+	free(string);
+	return NULL;
+}
+
+static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
+	if (!stream || !predicate) return NULL;
+	char* string = malloc(8);
+	if (!string) return NULL;
+	size_t max = 8;
+	size_t count = 0;
+	int nextChar;
+	while ((nextChar = fgetc(stream)) != EOF) {
+		if (count >= max) {
+			max *= 2;
+			char* temp = realloc(string, max);
+			if (!temp) {
+				free(string);
+				return NULL;
+			}
+			string = temp;
+		}
+		if (!predicate(nextChar)) {
+			ungetc(nextChar, stream);
+			string[count] = '\0';
+			return string;
+		}
+		string[count++] = nextChar;
+	}
+	free(string);
+	return NULL;
+}
+#undef PRIVATE_IMPLEMENTATIONS
