@@ -26,15 +26,15 @@ static char* _scanWhile(FILE*, bool (*)(int));
 #undef PRIVATE_DEFINITIONS
 
 #define PUBLIC_IMPLEMENTATIONS
-JsonNode* jnode_create(JsonValue value) {
+JsonNode* jnode_create(char* identifier, JsonValue value) {
 	JsonNode* jnode = malloc(sizeof(JsonNode));
 	if (!jnode) return NULL;
-	jnode->identifier = NULL;
+	jnode->identifier = identifier;
 	jnode->value = value;
 	if (IS_COMPLEX(value.type)) {
 		puts("( jcomplex ) parsed");
-		jnode->value.jcomplex.nodes = calloc(16, sizeof(JsonNode*));
-		jnode->value.jcomplex.max = 16; // TODO: remove numeric literals
+		jnode->value.jcomplex.nodes = calloc(JSON_COMPLEX_DEFAULT_SIZE, sizeof(JsonNode*));
+		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_SIZE;
 		jnode->value.jcomplex.count = 0;
 	}
 	return jnode;
@@ -77,7 +77,6 @@ JsonNode* json_parseFile(char* path) {
 	return node;
 }
 
-// TODO: Better error handling
 JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	va_list args;
 	va_start(args, count);
@@ -104,7 +103,7 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 			int index = va_arg(args, int);
 			root = root->value.jcomplex.nodes[index];
 		} else {
-			// TODO: Handle error
+			return NULL;
 		}
 	}
 	va_end(args);
@@ -122,19 +121,22 @@ static JsonNode* _skip(FILE* jstream) {
 	puts("entered _skip");
 	fgetc(jstream);
 	puts("exited _skip");
-	return jnode_create((JsonValue){JSON_INVALID, 0});
+	return jnode_create(NULL, (JsonValue){JSON_INVALID, 0});
 }
 
 static JsonNode* _object(FILE* jstream) {
 	puts("entered _object");
 	fgetc(jstream); // Consume the '{'
-	JsonNode* jnode = jnode_create((JsonValue){JSON_OBJECT, 0});
+	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
 	int nextChar;
 	while ((nextChar = _fpeek(jstream)) != '}' && !feof(jstream)) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
-		if (!appendee || appendee->value.type == JSON_INVALID) {
+		if (!appendee) { // Parsing failed
+			free(jnode);
+			return NULL;
+		} else if (appendee->value.type == JSON_INVALID) {
 			free(appendee);
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
@@ -155,12 +157,15 @@ static JsonNode* _object(FILE* jstream) {
 static JsonNode* _array(FILE* jstream) {
 	puts("entered _array");
 	fgetc(jstream); // Consume the '['
-	JsonNode* jnode = jnode_create((JsonValue){JSON_ARRAY, 0});
+	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int nextChar;
 	while ((nextChar = _fpeek(jstream)) != ']' && !feof(jstream)) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
-		if (appendee->value.type == JSON_INVALID) {
+		if (!appendee) { // Parsing failed
+			free(jnode);
+			return NULL;
+		} else if (appendee->value.type == JSON_INVALID) {
 			free(appendee);
 			continue;
 		}
@@ -177,10 +182,10 @@ static JsonNode* _boolean(FILE* jstream) {
 	JsonNode* jnode;
 	if (strcmp(boolString, "true") == 0) {
 		puts("( true ) parsed");
-		jnode = jnode_create((JsonValue){JSON_BOOL, .boolean = true});
+		jnode = jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = true});
 	} else if (strcmp(boolString, "false") == 0) {
 		puts("( false ) parsed");
-		jnode = jnode_create((JsonValue){JSON_BOOL, .boolean = false});
+		jnode = jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = false});
 	} else {
 		jnode = NULL;
 	}
@@ -199,7 +204,7 @@ static JsonNode* _string(FILE* jstream) {
 	fgetc(jstream); // Consume the other '"'
 	printf("( %s ) parsed\n", string);
 	puts("exited _string");
-	return jnode_create((JsonValue){JSON_STRING, .string = string});
+	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
 static JsonNode* _number(FILE* jstream) {
@@ -211,12 +216,12 @@ static JsonNode* _number(FILE* jstream) {
 		float real = (float)atof(numberString);
 		printf("( %f ) parsed\n", real);
 		puts("exited _number");
-		return jnode_create((JsonValue){JSON_REAL, .real = real});
+		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
 	printf("( %d ) parsed\n", integer);
 	puts("exited _number");
-	return jnode_create((JsonValue){JSON_INT, .integer = integer});
+	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 
 static JsonNode* _null(FILE* jstream) {
@@ -225,7 +230,7 @@ static JsonNode* _null(FILE* jstream) {
 	JsonNode* jnode;
 	if (nullString && strcmp(nullString, "null") == 0) {
 		puts("( null ) parsed");
-		jnode = jnode_create((JsonValue){JSON_NULL, 0});
+		jnode = jnode_create(NULL, (JsonValue){JSON_NULL, 0});
 	} else {
 		// TODO: handle error
 	}
@@ -252,12 +257,11 @@ static parserFunc _getParser(int character) {
 			return _boolean;
 		case 'n': // null
 			return _null;
-		default: // number | whitespace | unexpected character
+		default: // number or whitespace
 			if (isdigit(character)) {
 				return _number;
 			}
 			return _skip;
-			// TODO: handle error
 	}
 }
 
