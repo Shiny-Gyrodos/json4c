@@ -1,5 +1,5 @@
-#ifndef C_JSON
-#define C_JSON
+#ifndef JSON4C_GUARD
+#define JSON4C_GUARD
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -55,4 +55,4 @@ void jnode_free(JsonNode*);
 JsonNode* json_parseFile(char*);
 JsonNode* json_get(JsonNode*, size_t, ...);
 
-#endif // C_JSON
+#endif // JSON4C_GUARD
