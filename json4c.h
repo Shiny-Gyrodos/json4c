@@ -12,7 +12,7 @@ typedef enum {
 	JSON_STRING = 1 << 4,
 	JSON_BOOL = 1 << 5,
 	JSON_NULL = 1 << 6,
-	JSON_INVALID = 1 << 7
+	JSON_INVALID = 1 << 7,
 } JsonType;
 
 #define JSON_COMPLEX (JSON_OBJECT | JSON_ARRAY)
@@ -40,7 +40,6 @@ typedef struct JsonValue {
 #define AS_ARRAY(jnode)		((jnode)->value.jcomplex)
 #define AS_OBJECT(jnode)	((jnode)->value.jcomplex)
 typedef struct JsonNode {
-	struct JsonNode* parent;
 	char* identifier;
 	struct JsonValue value;
 } JsonNode;
@@ -50,7 +49,6 @@ void jnode_append(JsonNode*, JsonNode*);
 void jnode_free(JsonNode*);
 
 JsonNode* json_parseFile(char*);
-bool json_isValid(char*);
 JsonNode* json_get(JsonNode*, size_t, ...);
 
 #endif // C_JSON
