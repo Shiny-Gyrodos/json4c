@@ -18,6 +18,10 @@ typedef enum {
 #define JSON_COMPLEX (JSON_OBJECT | JSON_ARRAY)
 #define IS_COMPLEX(jsonType) (jsonType & JSON_COMPLEX)
 
+#ifndef JSON_COMPLEX_DEFAULT_SIZE
+#define JSON_COMPLEX_DEFAULT_SIZE 16
+#endif
+
 typedef struct JsonValue {
 	JsonType type;
 	union {
@@ -44,7 +48,7 @@ typedef struct JsonNode {
 	struct JsonValue value;
 } JsonNode;
 
-JsonNode* jnode_create(JsonValue);
+JsonNode* jnode_create(char*, JsonValue);
 void jnode_append(JsonNode*, JsonNode*);
 void jnode_free(JsonNode*);
 
