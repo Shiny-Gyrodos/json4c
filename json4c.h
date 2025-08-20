@@ -18,8 +18,8 @@ typedef enum {
 #define JSON_COMPLEX (JSON_OBJECT | JSON_ARRAY)
 #define IS_COMPLEX(jsonType) (jsonType & JSON_COMPLEX)
 
-#ifndef JSON_COMPLEX_DEFAULT_SIZE
-#define JSON_COMPLEX_DEFAULT_SIZE 16
+#ifndef JSON_COMPLEX_DEFAULT_CAPACITY
+#define JSON_COMPLEX_DEFAULT_CAPACITY 16
 #endif
 
 typedef struct JsonValue {

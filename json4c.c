@@ -33,8 +33,8 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 	jnode->value = value;
 	if (IS_COMPLEX(value.type)) {
 		puts("( jcomplex ) parsed");
-		jnode->value.jcomplex.nodes = calloc(JSON_COMPLEX_DEFAULT_SIZE, sizeof(JsonNode*));
-		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_SIZE;
+		jnode->value.jcomplex.nodes = calloc(JSON_COMPLEX_DEFAULT_CAPACITY, sizeof(JsonNode*));
+		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
 		jnode->value.jcomplex.count = 0;
 	}
 	return jnode;
