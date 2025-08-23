@@ -57,6 +57,7 @@ void jnode_append(JsonNode* parent, JsonNode* child) {
 }
 
 void jnode_free(JsonNode* jnode) {
+	if (!jnode) return;
 	if (IS_COMPLEX(jnode->value.type)) {
 		int i;
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
@@ -70,22 +71,26 @@ void jnode_free(JsonNode* jnode) {
 }
 
 
-// Shouldn't be called directly
-JsonNode* _json_object(size_t count, struct _IdNodePair* pairs) {
+JsonNode* _json_object(JsonNode** jnodes) {
 	JsonNode* jobject = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	int i;
-	for (i = 0; i < count; i++) {
-		struct _IdNodePair pair = pairs[i];
-		pair.jnode->identifier = pair.id;
-		jnode_append(jobject, pair.jnode);
+	char* identifier = NULL;
+	for (i = 0; jnodes[i]; i++) {
+		if (i % 2 == 0) {
+			identifier = jnodes[i]->value.string;
+		} else {
+			jnodes[i]->identifier = identifier;
+			identifier = NULL;
+			jnode_append(jobject, jnodes[i]);
+		}
 	}
 	return jobject;
 }
 
-JsonNode* json_array(size_t count, JsonNode** jnodes) {
+JsonNode* _json_array(JsonNode** jnodes) {
 	JsonNode* jarray = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int i;
-	for (i = 0; i < count; i++) {
+	for (i = 0; jnodes[i]; i++) {
 		jnode_append(jarray, jnodes[i]);
 	}
 	return jarray;
@@ -204,7 +209,8 @@ static JsonNode* _object(FILE* jstream) {
 			identifier = NULL;
 		}
 	}
-	fgetc(jstream); // Consume the '}'
+	// Consume the '}'
+	if (fgetc(jstream) != '}') return NULL;
 	puts("exited _object");
 	return jnode;
 }
@@ -226,7 +232,8 @@ static JsonNode* _array(FILE* jstream) {
 		}
 		jnode_append(jnode, appendee);
 	}
-	fgetc(jstream); // Consume the ']'
+	// Consume the ']'
+	if (fgetc(jstream) != ']') return NULL;
 	puts("exited _array");
 	return jnode;
 }
@@ -244,6 +251,7 @@ static JsonNode* _boolean(FILE* jstream) {
 	} else {
 		jnode = NULL;
 	}
+	free(boolString);
 	puts("exited _boolean");
 	return jnode;
 }
@@ -269,11 +277,14 @@ static JsonNode* _number(FILE* jstream) {
 		char* appendee = _scanWhile(jstream, _realPredicate);
 		numberString = strcat(numberString, appendee);
 		float real = (float)atof(numberString);
+		free(appendee);
+		free(numberString);
 		printf("( %f ) parsed\n", real);
 		puts("exited _number");
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
+	free(numberString);
 	printf("( %d ) parsed\n", integer);
 	puts("exited _number");
 	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
@@ -289,6 +300,7 @@ static JsonNode* _null(FILE* jstream) {
 	} else {
 		jnode = NULL;
 	}
+	free(nullString);
 	puts("exited _null");
 	return jnode;
 }

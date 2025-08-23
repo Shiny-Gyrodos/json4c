@@ -59,13 +59,10 @@ void jnode_append(JsonNode*, JsonNode*);
 void jnode_free(JsonNode*);
 
 // Serialization
-struct _IdNodePair {
-	char* id;
-	JsonNode* jnode;
-}; // Odd, but this was the best solution I could think of for a nice api.
-JsonNode* _json_object(size_t, struct _IdNodePair*);
-#define json_object(count, ...) _json_object(count, (struct _IdNodePair[]){ __VA_ARGS__ })
-JsonNode* json_array(size_t, JsonNode**);
+JsonNode* _json_object(JsonNode**);
+#define json_object(...) _json_object((JsonNode*[]){__VA_ARGS__, NULL})
+JsonNode* _json_array(JsonNode**);
+#define json_array(...) _json_array((JsonNode*[]){__VA_ARGS__, NULL})
 JsonNode* json_bool(bool);
 JsonNode* json_int(int);
 JsonNode* json_real(float);
