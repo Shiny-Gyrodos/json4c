@@ -18,9 +18,13 @@ static parser _string;
 static parser _number;
 static parser _null;
 
+// Serialization
+static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent);
+
 // Helpers
 static parserFunc _getParser(int);
 static int _fpeek(FILE*);
+static char* _strcombine(const char*, const char*);
 static char* _scanUntil(FILE*, char*);
 static char* _scanWhile(FILE*, bool (*)(int));
 #undef PRIVATE_DEFINITIONS
@@ -43,7 +47,7 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 void jnode_append(JsonNode* parent, JsonNode* child) {
 	if (!parent || !child || !IS_COMPLEX(parent->value.type)) return;
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
-		parent->value.jcomplex.max *= 2;
+		parent->value.jcomplex.max *= JSON_COMPLEX_GROW_MULTIPLIER;
 		void* temp = realloc(parent->value.jcomplex.nodes, sizeof(JsonNode*) * parent->value.jcomplex.max);
 		if (!temp) return;
 		parent->value.jcomplex.nodes = temp;
@@ -63,6 +67,57 @@ void jnode_free(JsonNode* jnode) {
 	}
 	free(jnode->identifier);
 	free(jnode);
+}
+
+
+// Shouldn't be called directly
+JsonNode* _json_object(size_t count, struct _IdNodePair* pairs) {
+	JsonNode* jobject = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
+	int i;
+	for (i = 0; i < count; i++) {
+		struct _IdNodePair pair = pairs[i];
+		pair.jnode->identifier = pair.id;
+		jnode_append(jobject, pair.jnode);
+	}
+	return jobject;
+}
+
+JsonNode* json_array(size_t count, JsonNode** jnodes) {
+	JsonNode* jarray = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
+	int i;
+	for (i = 0; i < count; i++) {
+		jnode_append(jarray, jnodes[i]);
+	}
+	return jarray;
+}
+
+inline JsonNode* json_bool(bool boolean) {
+	return jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = boolean});
+}
+
+inline JsonNode* json_int(int integer) {
+	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
+}
+
+inline JsonNode* json_real(float real) {
+	return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
+}
+
+inline JsonNode* json_null(void) {
+	return jnode_create(NULL, (JsonValue){JSON_NULL, 0});
+}
+
+inline JsonNode* json_string(char* string) {
+	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
+}
+
+bool json_write(char* path, JsonNode* jnode, char* indent) {
+	const char* WRITE = "w";
+	FILE* jsonFile = fopen(path, WRITE);
+	if (!jsonFile) return false;
+	_serialize(jsonFile, jnode, indent);
+	fclose(jsonFile);
+	return true;
 }
 
 
@@ -232,11 +287,90 @@ static JsonNode* _null(FILE* jstream) {
 		puts("( null ) parsed");
 		jnode = jnode_create(NULL, (JsonValue){JSON_NULL, 0});
 	} else {
-		// TODO: handle error
+		jnode = NULL;
 	}
 	puts("exited _null");
 	return jnode;
 }
+
+// TODO: needs a serious refactor
+// TODO: only add trailing commas when necessary
+static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent) {
+#define HAS_IDENTIFIER ((jnode)->identifier)
+	switch (jnode->value.type) {
+		case JSON_OBJECT:
+		case JSON_ARRAY: {
+			// For both '{' and '[', adding two ('{' + 2) gives their closing counterpart.
+			char open = jnode->value.type == JSON_OBJECT ? '{' : '[';
+			char close = open + 2;
+			if (HAS_IDENTIFIER) {
+				fprintf(jsonFile, "%s\"%s\": %c\n", indent, jnode->identifier, open);
+			} else {
+				fprintf(jsonFile, "%s%c\n", indent, open);
+			}
+			int i;
+			for (i = 0; i < jnode->value.jcomplex.count; i++) {
+				char* newIndent = _strcombine(indent, "\t");
+				_serialize(jsonFile, jnode->value.jcomplex.nodes[i], _strcombine(indent, "\t"));
+				free(newIndent); // _strcombine return value is malloc'ed
+			}
+			fprintf(jsonFile, "%s%c", indent, close);
+			break;
+		}
+		case JSON_BOOL:
+			if (HAS_IDENTIFIER) {
+				fprintf(
+					jsonFile, 
+					"%s\"%s\": %s", 
+					indent, 
+					jnode->identifier, 
+					jnode->value.boolean ? "true" : "false"
+				);
+			} else {
+				fprintf(jsonFile, "%s%s", indent, jnode->value.boolean ? "true" : "false");
+			}
+			break;
+		case JSON_STRING:
+			if (HAS_IDENTIFIER) {
+				fprintf(
+					jsonFile,
+					"%s\"%s\": \"%s\"",
+					indent,
+					jnode->identifier,
+					jnode->value.string
+				);
+			} else {
+				fprintf(jsonFile, "%s\"%s\"", indent, jnode->value.string);
+			}
+			break;
+		case JSON_NULL:
+			if (HAS_IDENTIFIER) {
+				fprintf(jsonFile, "%s\"%s\": null", indent, jnode->identifier);
+			} else {
+				fprintf(jsonFile, "%snull", indent);
+			}
+			break;
+		case JSON_INT:
+			if (HAS_IDENTIFIER) {
+				fprintf(jsonFile, "%s\"%s\": %d", indent, jnode->identifier, jnode->value.integer);
+			} else {
+				fprintf(jsonFile, "%s%d", indent, jnode->value.integer);
+			}
+			break;
+		case JSON_REAL:
+			if (HAS_IDENTIFIER) {
+				fprintf(jsonFile, "%s\"%s\": %f", indent, jnode->identifier, jnode->value.real);
+			} else {
+				fprintf(jsonFile, "%s%f", indent, jnode->value.real);
+			}
+			break;
+		default:
+			return;
+	}
+	fputs(",\n", jsonFile);
+#undef HAS_IDENTIFIER
+}
+
 
 static parserFunc _getParser(int character) {
 	if (character == EOF) return NULL;
@@ -268,6 +402,22 @@ static parserFunc _getParser(int character) {
 static int _fpeek(FILE* stream) {
 	int character = fgetc(stream);
 	return character == EOF ? EOF : ungetc(character, stream);
+}
+
+static char* _strcombine(const char* s1, const char* s2) {
+	// + 1 for '\0'
+	char* string = malloc(strlen(s1) + strlen(s2) + 1);
+	if (!string) return NULL;
+	int i;
+	for (i = 0; s1[i] != '\0'; i++) {
+		string[i] = s1[i];
+	}
+	int j;
+	for (j = 0; s2[j] != '\0'; i++, j++) {
+		string[i] = s2[j];
+	}
+	string[i] = '\0';
+	return string;
 }
 
 static char* _scanUntil(FILE* stream, char* delimiters) {
