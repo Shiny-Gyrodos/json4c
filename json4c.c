@@ -19,7 +19,7 @@ static parser _number;
 static parser _null;
 
 // Serialization
-static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent);
+static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extra);
 
 // Helpers
 static parserFunc _getParser(int);
@@ -120,7 +120,7 @@ bool json_write(char* path, JsonNode* jnode, char* indent) {
 	const char* WRITE = "w";
 	FILE* jsonFile = fopen(path, WRITE);
 	if (!jsonFile) return false;
-	_serialize(jsonFile, jnode, indent);
+	_serialize(jsonFile, jnode, indent, "");
 	fclose(jsonFile);
 	return true;
 }
@@ -306,81 +306,55 @@ static JsonNode* _null(FILE* jstream) {
 }
 
 // TODO: needs a serious refactor
-// TODO: only add trailing commas when necessary
-static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent) {
-#define HAS_IDENTIFIER ((jnode)->identifier)
+static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extra) {
+	if (!jsonFile || !jnode) return;
+	if (!indent) {
+		indent = "\t";
+	}
+	char* firstIndent = indent;
+	if (jnode->identifier) {
+		firstIndent = "";
+		fprintf(jsonFile, "%s\"%s\": ", indent, jnode->identifier);
+	}
 	switch (jnode->value.type) {
 		case JSON_OBJECT:
 		case JSON_ARRAY: {
 			// For both '{' and '[', adding two ('{' + 2) gives their closing counterpart.
 			char open = jnode->value.type == JSON_OBJECT ? '{' : '[';
 			char close = open + 2;
-			if (HAS_IDENTIFIER) {
-				fprintf(jsonFile, "%s\"%s\": %c\n", indent, jnode->identifier, open);
-			} else {
-				fprintf(jsonFile, "%s%c\n", indent, open);
-			}
+			fprintf(jsonFile, "%s%c\n", firstIndent, open);
 			int i;
 			for (i = 0; i < jnode->value.jcomplex.count; i++) {
 				char* newIndent = _strcombine(indent, "\t");
-				_serialize(jsonFile, jnode->value.jcomplex.nodes[i], _strcombine(indent, "\t"));
+				_serialize(
+					jsonFile, 
+					jnode->value.jcomplex.nodes[i], 
+					newIndent, 
+					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
+				);
 				free(newIndent); // _strcombine return value is malloc'ed
 			}
-			fprintf(jsonFile, "%s%c", indent, close);
+			fprintf(jsonFile, "%s%c%s", indent, close, extra);
 			break;
 		}
 		case JSON_BOOL:
-			if (HAS_IDENTIFIER) {
-				fprintf(
-					jsonFile, 
-					"%s\"%s\": %s", 
-					indent, 
-					jnode->identifier, 
-					jnode->value.boolean ? "true" : "false"
-				);
-			} else {
-				fprintf(jsonFile, "%s%s", indent, jnode->value.boolean ? "true" : "false");
-			}
+			fprintf(jsonFile, "%s%s%s", firstIndent, AS_BOOL(jnode) ? "true" : "false", extra);
 			break;
 		case JSON_STRING:
-			if (HAS_IDENTIFIER) {
-				fprintf(
-					jsonFile,
-					"%s\"%s\": \"%s\"",
-					indent,
-					jnode->identifier,
-					jnode->value.string
-				);
-			} else {
-				fprintf(jsonFile, "%s\"%s\"", indent, jnode->value.string);
-			}
+			fprintf(jsonFile, "%s\"%s\"%s", firstIndent, AS_STRING(jnode), extra);
 			break;
 		case JSON_NULL:
-			if (HAS_IDENTIFIER) {
-				fprintf(jsonFile, "%s\"%s\": null", indent, jnode->identifier);
-			} else {
-				fprintf(jsonFile, "%snull", indent);
-			}
+			fprintf(jsonFile, "%snull%s", firstIndent, extra);
 			break;
 		case JSON_INT:
-			if (HAS_IDENTIFIER) {
-				fprintf(jsonFile, "%s\"%s\": %d", indent, jnode->identifier, jnode->value.integer);
-			} else {
-				fprintf(jsonFile, "%s%d", indent, jnode->value.integer);
-			}
+			fprintf(jsonFile, "%s%d%s", firstIndent, AS_INT(jnode), extra);
 			break;
 		case JSON_REAL:
-			if (HAS_IDENTIFIER) {
-				fprintf(jsonFile, "%s\"%s\": %f", indent, jnode->identifier, jnode->value.real);
-			} else {
-				fprintf(jsonFile, "%s%f", indent, jnode->value.real);
-			}
+			fprintf(jsonFile, "%s%f%s", firstIndent, AS_REAL(jnode), extra);
 			break;
 		default:
-			return;
+			break;
 	}
-	fputs(",\n", jsonFile);
-#undef HAS_IDENTIFIER
 }
 
 
