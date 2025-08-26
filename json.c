@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "json4c.h"
+#include "json.h"
 
 // TODO: Finish implementing
 static void* (*json_alloc)(size_t) = malloc;
