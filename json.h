@@ -4,14 +4,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-// Users should define these as desired.
-#ifndef JSON_COMPLEX_DEFAULT_CAPACITY
-#define JSON_COMPLEX_DEFAULT_CAPACITY 16
-#endif
-#ifndef JSON_COMPLEX_GROW_MULTIPLIER
-#define JSON_COMPLEX_GROW_MULTIPLIER 2
-#endif
-
 // NOTE: Only JSON_OBJECT and JSON_ARRAY are ever combined.
 typedef enum {
 	JSON_OBJECT 	=	1 << 0,
@@ -84,7 +76,20 @@ JsonNode* json_parseFile(char* path);
 JsonNode* json_get(JsonNode*, size_t, ...);
 
 // Customization
+#ifndef JSON_COMPLEX_DEFAULT_CAPACITY
+#define JSON_COMPLEX_DEFAULT_CAPACITY 16
+#endif
+#ifndef JSON_COMPLEX_GROW_MULTIPLIER
+#define JSON_COMPLEX_GROW_MULTIPLIER 2
+#endif
+#ifndef JSON_DEFAULT_ALLOC
+#define JSON_DEFAULT_ALLOC malloc
+#endif
+#ifndef JSON_DEFAULT_FREE
+#define JSON_DEFAULT_FREE free
+#endif
+// WARNING: Allocator should only be set before json nodes are created or after they are freed.
 void json_setAllocator(void* (*json_alloc)(size_t), void (*json_free)(void*));
-void json_resetAllocator(void);
+void json_resetAllocator(void); 
 
 #endif // JSON4C_GUARD

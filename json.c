@@ -6,9 +6,8 @@
 
 #include "json.h"
 
-// TODO: Finish implementing
-static void* (*json_alloc)(size_t) = malloc;
-static void (*json_free)(void*) = free;
+static void* (*json_alloc)(size_t) = JSON_DEFAULT_ALLOC;
+static void (*json_free)(void*) = JSON_DEFAULT_FREE;
 
 #define PRIVATE_DEFINITIONS
 // Parsers
@@ -173,6 +172,18 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	}
 	va_end(args);
 	return root;
+}
+
+
+void json_setAllocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*)) {
+	if (!custom_malloc || !custom_free) return;
+	json_alloc = custom_malloc;
+	json_free = custom_free;
+}
+
+void json_resetAllocator(void) {
+	json_alloc = malloc;
+	json_free = free;
 }
 #undef PUBLIC_IMPLEMENTATIONS
 
