@@ -45,7 +45,7 @@ typedef struct JsonValue {
 #define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
 #define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
-#define IS_COMPLEX(jsonType) (jsonType & JSON_COMPLEX)
+#define IS_COMPLEX(jsonType) ((jsonType) & JSON_COMPLEX)
 
 typedef struct JsonNode {
 	char* identifier;
@@ -90,6 +90,6 @@ JsonNode* json_get(JsonNode*, size_t, ...);
 #endif
 // WARNING: Allocator should only be set before json nodes are created or after they are freed.
 void json_setAllocator(void* (*json_alloc)(size_t), void (*json_free)(void*));
-void json_resetAllocator(void); 
+void json_resetAllocator(void);
 
 #endif // JSON4C_GUARD
