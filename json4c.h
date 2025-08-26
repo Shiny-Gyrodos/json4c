@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+// Users should define these as desired.
+#ifndef JSON_COMPLEX_DEFAULT_CAPACITY
+#define JSON_COMPLEX_DEFAULT_CAPACITY 16
+#endif
+#ifndef JSON_COMPLEX_GROW_MULTIPLIER
+#define JSON_COMPLEX_GROW_MULTIPLIER 2
+#endif
+
 // NOTE: Only JSON_OBJECT and JSON_ARRAY are ever combined.
 typedef enum {
 	JSON_OBJECT 	=	1 << 0,
@@ -17,15 +25,6 @@ typedef enum {
 } JsonType;
 
 #define JSON_COMPLEX (JSON_OBJECT | JSON_ARRAY)
-#define IS_COMPLEX(jsonType) (jsonType & JSON_COMPLEX)
-
-// Users should define these as desired.
-#ifndef JSON_COMPLEX_DEFAULT_CAPACITY
-#define JSON_COMPLEX_DEFAULT_CAPACITY 16
-#endif
-#ifndef JSON_COMPLEX_GROW_MULTIPLIER
-#define JSON_COMPLEX_GROW_MULTIPLIER 2
-#endif
 
 typedef struct JsonValue {
 	JsonType type;
@@ -54,6 +53,8 @@ typedef struct JsonValue {
 #define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
 #define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
+#define IS_COMPLEX(jsonType) (jsonType & JSON_COMPLEX)
+
 typedef struct JsonNode {
 	char* identifier;
 	struct JsonValue value;
@@ -62,7 +63,7 @@ typedef struct JsonNode {
 // Low-level node editing.
 JsonNode* jnode_create(char*, JsonValue);
 void jnode_append(JsonNode*, JsonNode*);
-void jnode_free(JsonNode*);
+void jnode_json_free(JsonNode*);
 
 // Serialization
 JsonNode* _json_object(JsonNode**);
@@ -81,5 +82,9 @@ bool json_write(char* path, JsonNode* jnode, char* indent);
 // Deserialization
 JsonNode* json_parseFile(char* path);
 JsonNode* json_get(JsonNode*, size_t, ...);
+
+// Customization
+void json_setAllocator(void* (*json_alloc)(size_t), void (*json_free)(void*));
+void json_resetAllocator(void);
 
 #endif // JSON4C_GUARD

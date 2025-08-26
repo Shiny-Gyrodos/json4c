@@ -6,6 +6,10 @@
 
 #include "json4c.h"
 
+// TODO: Finish implementing
+static void* (*json_alloc)(size_t) = malloc;
+static void (*json_free)(void*) = free;
+
 #define PRIVATE_DEFINITIONS
 // Parsers
 typedef JsonNode* (*parserFunc)(FILE*);
@@ -31,13 +35,14 @@ static char* _scanWhile(FILE*, bool (*)(int));
 
 #define PUBLIC_IMPLEMENTATIONS
 JsonNode* jnode_create(char* identifier, JsonValue value) {
-	JsonNode* jnode = malloc(sizeof(JsonNode));
+	JsonNode* jnode = json_alloc(sizeof(JsonNode));
 	if (!jnode) return NULL;
 	jnode->identifier = identifier;
 	jnode->value = value;
 	if (IS_COMPLEX(value.type)) {
 		puts("( jcomplex ) parsed");
-		jnode->value.jcomplex.nodes = calloc(JSON_COMPLEX_DEFAULT_CAPACITY, sizeof(JsonNode*));
+		jnode->value.jcomplex.nodes = json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
+		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
 		jnode->value.jcomplex.count = 0;
 	}
@@ -56,18 +61,18 @@ void jnode_append(JsonNode* parent, JsonNode* child) {
 	parent->value.jcomplex.count++;
 }
 
-void jnode_free(JsonNode* jnode) {
+void jnode_json_free(JsonNode* jnode) {
 	if (!jnode) return;
 	if (IS_COMPLEX(jnode->value.type)) {
 		int i;
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
-			jnode_free(jnode->value.jcomplex.nodes[i]);
+			jnode_json_free(jnode->value.jcomplex.nodes[i]);
 		}
 	} else if (jnode->value.type == JSON_STRING) {
-		free(jnode->value.string);
+		json_free(jnode->value.string);
 	}
-	free(jnode->identifier);
-	free(jnode);
+	json_free(jnode->identifier);
+	json_free(jnode);
 }
 
 
@@ -194,10 +199,10 @@ static JsonNode* _object(FILE* jstream) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
 		if (!appendee) { // Parsing failed
-			free(jnode);
+			json_free(jnode);
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			free(appendee);
+			json_free(appendee);
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			// We have an identifier!
@@ -224,10 +229,10 @@ static JsonNode* _array(FILE* jstream) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
 		if (!appendee) { // Parsing failed
-			free(jnode);
+			json_free(jnode);
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			free(appendee);
+			json_free(appendee);
 			continue;
 		}
 		jnode_append(jnode, appendee);
@@ -251,7 +256,7 @@ static JsonNode* _boolean(FILE* jstream) {
 	} else {
 		jnode = NULL;
 	}
-	free(boolString);
+	json_free(boolString);
 	puts("exited _boolean");
 	return jnode;
 }
@@ -277,14 +282,14 @@ static JsonNode* _number(FILE* jstream) {
 		char* appendee = _scanWhile(jstream, _realPredicate);
 		numberString = strcat(numberString, appendee);
 		float real = (float)atof(numberString);
-		free(appendee);
-		free(numberString);
+		json_free(appendee);
+		json_free(numberString);
 		printf("( %f ) parsed\n", real);
 		puts("exited _number");
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
-	free(numberString);
+	json_free(numberString);
 	printf("( %d ) parsed\n", integer);
 	puts("exited _number");
 	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
@@ -300,7 +305,7 @@ static JsonNode* _null(FILE* jstream) {
 	} else {
 		jnode = NULL;
 	}
-	free(nullString);
+	json_free(nullString);
 	puts("exited _null");
 	return jnode;
 }
@@ -332,7 +337,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 					newIndent, 
 					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
 				);
-				free(newIndent); // _strcombine return value is malloc'ed
+				json_free(newIndent); // _strcombine return value is malloc'ed
 			}
 			fprintf(jsonFile, "%s%c%s", indent, close, extra);
 			break;
@@ -392,7 +397,7 @@ static int _fpeek(FILE* stream) {
 
 static char* _strcombine(const char* s1, const char* s2) {
 	// + 1 for '\0'
-	char* string = malloc(strlen(s1) + strlen(s2) + 1);
+	char* string = json_alloc(strlen(s1) + strlen(s2) + 1);
 	if (!string) return NULL;
 	int i;
 	for (i = 0; s1[i] != '\0'; i++) {
@@ -408,7 +413,7 @@ static char* _strcombine(const char* s1, const char* s2) {
 
 static char* _scanUntil(FILE* stream, char* delimiters) {
 	if (!stream || !delimiters) return NULL;
-	char* string = malloc(8);
+	char* string = json_alloc(8);
 	if (!string) return NULL;
 	size_t max = 8;
 	size_t count = 0;
@@ -418,7 +423,7 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				free(string);
+				json_free(string);
 				return NULL;
 			}
 			string = temp;
@@ -430,13 +435,13 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 		}
 		string[count++] = nextChar;
 	}
-	free(string);
+	json_free(string);
 	return NULL;
 }
 
 static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 	if (!stream || !predicate) return NULL;
-	char* string = malloc(8);
+	char* string = json_alloc(8);
 	if (!string) return NULL;
 	size_t max = 8;
 	size_t count = 0;
@@ -446,7 +451,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				free(string);
+				json_free(string);
 				return NULL;
 			}
 			string = temp;
@@ -458,7 +463,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 		}
 		string[count++] = nextChar;
 	}
-	free(string);
+	json_free(string);
 	return NULL;
 }
 #undef PRIVATE_IMPLEMENTATIONS
