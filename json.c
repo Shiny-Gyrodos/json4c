@@ -6,6 +6,13 @@
 
 #include "json.h"
 
+#undef DEBUG
+#ifdef JSON4C_DEBUG
+#define DEBUG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
+#else
+#define DEBUG(msg)
+#endif
+
 static void* (*json_alloc)(size_t) = JSON_DEFAULT_ALLOC;
 static void (*json_free)(void*) = JSON_DEFAULT_FREE;
 
@@ -39,7 +46,6 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 	jnode->identifier = identifier;
 	jnode->value = value;
 	if (IS_COMPLEX(value.type)) {
-		puts("( jcomplex ) parsed");
 		jnode->value.jcomplex.nodes = json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
@@ -60,12 +66,12 @@ void jnode_append(JsonNode* parent, JsonNode* child) {
 	parent->value.jcomplex.count++;
 }
 
-void jnode_json_free(JsonNode* jnode) {
+void jnode_free(JsonNode* jnode) {
 	if (!jnode) return;
 	if (IS_COMPLEX(jnode->value.type)) {
 		int i;
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
-			jnode_json_free(jnode->value.jcomplex.nodes[i]);
+			jnode_free(jnode->value.jcomplex.nodes[i]);
 		}
 	} else if (jnode->value.type == JSON_STRING) {
 		json_free(jnode->value.string);
@@ -194,15 +200,16 @@ static bool _realPredicate(int character) { return character == '.' || isdigit(c
 static bool _letterPredicate(int character) { return isalpha(character); }
 
 static JsonNode* _skip(FILE* jstream) {
-	puts("entered _skip");
+	DEBUG("entered _skip");
 	fgetc(jstream);
-	puts("exited _skip");
+	DEBUG("exited _skip");
 	return jnode_create(NULL, (JsonValue){JSON_INVALID, 0});
 }
 
 static JsonNode* _object(FILE* jstream) {
-	puts("entered _object");
+	DEBUG("entered _object");
 	fgetc(jstream); // Consume the '{'
+	DEBUG("( { ) parsed");
 	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
 	int nextChar;
@@ -210,7 +217,8 @@ static JsonNode* _object(FILE* jstream) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
 		if (!appendee) { // Parsing failed
-			json_free(jnode);
+			jnode_free(jnode);
+			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
 			json_free(appendee);
@@ -218,7 +226,9 @@ static JsonNode* _object(FILE* jstream) {
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			// We have an identifier!
 			identifier = appendee->value.string;
-			printf("identifier = %s\n", identifier);
+			#ifdef JSON4C_DEBUG
+			printf("[%s:%d] ( %s ) identifier parsed\n", __FILE__, __LINE__, identifier);
+			#endif
 		} else {
 			appendee->identifier = identifier;
 			jnode_append(jnode, appendee);
@@ -226,21 +236,28 @@ static JsonNode* _object(FILE* jstream) {
 		}
 	}
 	// Consume the '}'
-	if (fgetc(jstream) != '}') return NULL;
-	puts("exited _object");
+	if (fgetc(jstream) != '}') {
+		jnode_free(jnode);
+		DEBUG("( } ) missing, bailing out");
+		return NULL;
+	}
+	DEBUG("( } ) parsed");
+	DEBUG("exited _object");
 	return jnode;
 }
 
 static JsonNode* _array(FILE* jstream) {
-	puts("entered _array");
+	DEBUG("entered _array");
 	fgetc(jstream); // Consume the '['
+	DEBUG("( [ ) parsed");
 	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int nextChar;
 	while ((nextChar = _fpeek(jstream)) != ']' && !feof(jstream)) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(jstream);
 		if (!appendee) { // Parsing failed
-			json_free(jnode);
+			jnode_free(jnode);
+			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
 			json_free(appendee);
@@ -249,45 +266,54 @@ static JsonNode* _array(FILE* jstream) {
 		jnode_append(jnode, appendee);
 	}
 	// Consume the ']'
-	if (fgetc(jstream) != ']') return NULL;
-	puts("exited _array");
+	if (fgetc(jstream) != ']') {
+		jnode_free(jnode);
+		DEBUG("( ] ) missing, bailing out");
+		return NULL;
+	}
+	DEBUG("( ] ) parsed");
+	DEBUG("exited _array");
 	return jnode;
 }
 
 static JsonNode* _boolean(FILE* jstream) {
-	puts("entered _boolean");
+	DEBUG("entered _boolean");
 	char* boolString = _scanWhile(jstream, _letterPredicate);
 	JsonNode* jnode;
 	if (strcmp(boolString, "true") == 0) {
-		puts("( true ) parsed");
+		DEBUG("( true ) parsed");
 		jnode = jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = true});
 	} else if (strcmp(boolString, "false") == 0) {
-		puts("( false ) parsed");
+		DEBUG("( false ) parsed");
 		jnode = jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = false});
 	} else {
+		DEBUG("_boolean failed to parse");
 		jnode = NULL;
 	}
 	json_free(boolString);
-	puts("exited _boolean");
+	DEBUG("exited _boolean");
 	return jnode;
 }
 
 static JsonNode* _string(FILE* jstream) {
-	puts("entered _string");
+	DEBUG("entered _string");
 	fgetc(jstream); // Consume the '"'
 	char* string = _scanUntil(jstream, "\"");
 	if (!string) {
-		puts("exited _string");
+		DEBUG("_string failed to parse");
+		DEBUG("exited _string");
 		return NULL;
 	}
 	fgetc(jstream); // Consume the other '"'
-	printf("( %s ) parsed\n", string);
-	puts("exited _string");
+	#ifdef JSON4C_DEBUG
+	printf("[%s:%d] ( %s ) parsed\n", __FILE__, __LINE__, string);
+	#endif
+	DEBUG("exited _string");
 	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
 static JsonNode* _number(FILE* jstream) {
-	puts("entered _number");
+	DEBUG("entered _number");
 	char* numberString = _scanWhile(jstream, _intPredicate);
 	if (_fpeek(jstream) == '.') {
 		char* appendee = _scanWhile(jstream, _realPredicate);
@@ -295,29 +321,34 @@ static JsonNode* _number(FILE* jstream) {
 		float real = (float)atof(numberString);
 		json_free(appendee);
 		json_free(numberString);
-		printf("( %f ) parsed\n", real);
-		puts("exited _number");
+		#ifdef JSON4C_DEBUG
+		printf("[%s:%d] ( %f ) parsed\n", __FILE__, __LINE__, real);
+		#endif
+		DEBUG("exited _number");
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
 	json_free(numberString);
-	printf("( %d ) parsed\n", integer);
-	puts("exited _number");
+	#ifdef JSON4C_DEBUG
+	printf("[%s:%d] ( %d ) parsed\n", __FILE__, __LINE__, integer);
+	#endif
+	DEBUG("exited _number");
 	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 
 static JsonNode* _null(FILE* jstream) {
-	puts("entered _null");
+	DEBUG("entered _null");
 	char* nullString = _scanWhile(jstream, _letterPredicate);
 	JsonNode* jnode;
 	if (nullString && strcmp(nullString, "null") == 0) {
-		puts("( null ) parsed");
+		DEBUG("( null ) parsed");
 		jnode = jnode_create(NULL, (JsonValue){JSON_NULL, 0});
 	} else {
+		DEBUG("_null failed to parse");
 		jnode = NULL;
 	}
 	json_free(nullString);
-	puts("exited _null");
+	DEBUG("exited _null");
 	return jnode;
 }
 

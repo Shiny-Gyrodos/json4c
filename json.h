@@ -55,7 +55,7 @@ typedef struct JsonNode {
 // Low-level node editing.
 JsonNode* jnode_create(char*, JsonValue);
 void jnode_append(JsonNode*, JsonNode*);
-void jnode_json_free(JsonNode*);
+void jnode_free(JsonNode*);
 
 // Serialization
 JsonNode* _json_object(JsonNode**);
