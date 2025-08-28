@@ -10,7 +10,7 @@
 #ifdef JSON4C_DEBUG
 #define DEBUG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
 #else
-#define DEBUG(msg)
+#define DEBUG(msg) // Idk if there is a better way to compile to nothing.
 #endif
 
 static void* (*json_alloc)(size_t) = JSON_DEFAULT_ALLOC;
@@ -153,6 +153,11 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	while (count --> 0) { // Slide down-to operator :D 
 		if (!root) return NULL;
 		if (root->value.type == JSON_OBJECT) {
+			/*
+				NOTE:
+				This could be sped up if identifiers were stored in a hashmap,
+				but that is likely out of scope for this project.
+			*/
 			char* string = va_arg(args, char*);
 			int i = 0;
 			while (true) {
