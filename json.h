@@ -20,7 +20,7 @@ typedef struct JsonValue {
 	JsonType type;
 	union {
 		int integer;
-		float real;
+		double real;
 		bool boolean;
 		char* string;
 		struct {
@@ -45,7 +45,6 @@ typedef struct JsonValue {
 #define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
 #define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
-#define IS_COMPLEX(jsonType) ((jsonType) == JSON_OBJECT || (jsonType) == JSON_ARRAY)
 
 typedef struct JsonNode {
 	char* identifier;
@@ -66,7 +65,7 @@ JsonNode* _json_array(JsonNode**);
 #define json_emptyArray() jnode_create(NULL, (JsonValue){JSON_ARRAY, 0})
 JsonNode* json_bool(bool);
 JsonNode* json_int(int);
-JsonNode* json_real(float);
+JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
 bool json_write(char* path, JsonNode* jnode, char* indent);

@@ -33,6 +33,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 
 // Helpers
 static parserFunc _getParser(int);
+static bool _iscomplex(JsonType type);
 static int _fpeek(FILE*);
 static char* _strcombine(const char*, const char*);
 static char* _scanUntil(FILE*, char*);
@@ -45,7 +46,7 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 	if (!jnode) return NULL;
 	jnode->identifier = identifier;
 	jnode->value = value;
-	if (IS_COMPLEX(value.type)) {
+	if (_iscomplex(value.type)) {
 		jnode->value.jcomplex.nodes = json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
@@ -55,7 +56,7 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 }
 
 void jnode_append(JsonNode* parent, JsonNode* child) {
-	if (!parent || !child || !IS_COMPLEX(parent->value.type)) return;
+	if (!parent || !child || !_iscomplex(parent->value.type)) return;
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
 		parent->value.jcomplex.max *= JSON_COMPLEX_GROW_MULTIPLIER;
 		void* temp = realloc(parent->value.jcomplex.nodes, sizeof(JsonNode*) * parent->value.jcomplex.max);
@@ -68,7 +69,7 @@ void jnode_append(JsonNode* parent, JsonNode* child) {
 
 void jnode_free(JsonNode* jnode) {
 	if (!jnode) return;
-	if (IS_COMPLEX(jnode->value.type)) {
+	if (_iscomplex(jnode->value.type)) {
 		int i;
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
 			jnode_free(jnode->value.jcomplex.nodes[i]);
@@ -114,7 +115,7 @@ inline JsonNode* json_int(int integer) {
 	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 
-inline JsonNode* json_real(float real) {
+inline JsonNode* json_real(double real) {
 	return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 }
 
@@ -318,7 +319,8 @@ static JsonNode* _number(FILE* jstream) {
 	if (_fpeek(jstream) == '.') {
 		char* appendee = _scanWhile(jstream, _realPredicate);
 		numberString = strcat(numberString, appendee);
-		float real = (float)atof(numberString);
+		char* end;
+		double real = strtod(numberString, &end);
 		json_free(appendee);
 		json_free(numberString);
 		#ifdef JSON4C_DEBUG
@@ -430,6 +432,10 @@ static parserFunc _getParser(int character) {
 			}
 			return _skip;
 	}
+}
+
+static bool _iscomplex(JsonType type) {
+	return type == JSON_OBJECT || type == JSON_ARRAY;
 }
 
 static int _fpeek(FILE* stream) {
