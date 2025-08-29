@@ -6,17 +6,15 @@
 
 // NOTE: Only JSON_OBJECT and JSON_ARRAY are ever combined.
 typedef enum {
-	JSON_OBJECT 	=	1 << 0,
-	JSON_ARRAY 		= 	1 << 1,
-	JSON_INT 		= 	1 << 2,
-	JSON_REAL 		= 	1 << 3,
-	JSON_STRING 	= 	1 << 4,
-	JSON_BOOL 		= 	1 << 5,
-	JSON_NULL 		= 	1 << 6,
-	JSON_INVALID 	= 	1 << 7
+	JSON_OBJECT,
+	JSON_ARRAY,
+	JSON_INT,
+	JSON_REAL,
+	JSON_STRING,
+	JSON_BOOL,
+	JSON_NULL,
+	JSON_INVALID
 } JsonType;
-
-#define JSON_COMPLEX (JSON_OBJECT | JSON_ARRAY)
 
 typedef struct JsonValue {
 	JsonType type;
@@ -47,7 +45,7 @@ typedef struct JsonValue {
 #define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
 #define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
-#define IS_COMPLEX(jsonType) ((jsonType) & JSON_COMPLEX)
+#define IS_COMPLEX(jsonType) ((jsonType) == JSON_OBJECT || (jsonType) == JSON_ARRAY)
 
 typedef struct JsonNode {
 	char* identifier;
