@@ -147,36 +147,31 @@ JsonNode* json_parseFile(char* path) {
 	return node;
 }
 
+JsonNode* json_property(JsonNode* jnode, char* identifier) {
+	if (!jnode || jnode->value.type != JSON_OBJECT) return NULL;
+	int i;
+	for (i = 0; i < jnode->value.jcomplex.count; i++) {
+		if (strcmp(jnode->value.jcomplex.nodes[i]->identifier, identifier) == 0) {
+			return jnode->value.jcomplex.nodes[i];
+		}
+	}
+	return NULL;
+}
+
+JsonNode* json_index(JsonNode* jnode, int index) {
+	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count) return NULL;
+	return jnode->value.jcomplex.nodes[index];
+}
+
 JsonNode* json_get(JsonNode* root, size_t count, ...) {
 	va_list args;
 	va_start(args, count);
-	while (count --> 0) { // Slide down-to operator :D 
+	while (count --> 0) {
 		if (!root) return NULL;
 		if (root->value.type == JSON_OBJECT) {
-			/*
-				NOTE:
-				This could be sped up if identifiers were stored in a hashmap,
-				but that is likely out of scope for this project.
-			*/
-			char* string = va_arg(args, char*);
-			int i = 0;
-			while (true) {
-				if (i >= root->value.jcomplex.count) {
-					return NULL;
-				}
-				JsonNode* node = root->value.jcomplex.nodes[i];
-				if (!node) {
-					return NULL;
-				}
-				if (strcmp(string, node->identifier) == 0) {
-					root = node;
-					break;
-				}
-				i++;
-			}
+			root = json_property(root, va_arg(args, char*));
 		} else if (root->value.type == JSON_ARRAY) {
-			int index = va_arg(args, int);
-			root = root->value.jcomplex.nodes[index];
+			root = json_index(root, va_arg(args, int));
 		} else {
 			return NULL;
 		}

@@ -73,6 +73,8 @@ bool json_write(char* path, JsonNode* jnode, char* indent);
 
 // Deserialization
 JsonNode* json_parseFile(char* path);
+JsonNode* json_property(JsonNode*, char*);
+JsonNode* json_index(JsonNode*, int);
 JsonNode* json_get(JsonNode*, size_t, ...);
 
 // Customization
