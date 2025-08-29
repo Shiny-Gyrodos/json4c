@@ -33,12 +33,14 @@ typedef struct JsonValue {
 	};
 } JsonValue;
 
+// Casts a JsonNode*
 #define AS_INT(jnode)		((jnode)->value.integer)
 #define AS_REAL(jnode)		((jnode)->value.real)
 #define AS_BOOL(jnode)		((jnode)->value.boolean)
 #define AS_STRING(jnode)	((jnode)->value.string)
 #define AS_ARRAY(jnode)		((jnode)->value.jcomplex)
 #define AS_OBJECT(jnode)	((jnode)->value.jcomplex)
+// Tests a JsonNode*
 #define IS_INT(jnode)		((jnode)->value.type == JSON_INT)
 #define IS_REAL(jnode)		((jnode)->value.type == JSON_REAL)
 #define IS_BOOL(jnode)		((jnode)->value.type == JSON_BOOL)
