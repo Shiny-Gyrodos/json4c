@@ -46,6 +46,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 
 // Helpers
 static parserFunc _getParser(int);
+static bool _expect(int expected, int character);
 static bool _iscomplex(JsonType type);
 static int _fpeek(FILE*);
 static char* _scanUntil(FILE*, char*);
@@ -94,7 +95,7 @@ void jnode_free(JsonNode* jnode) {
 }
 
 
-JsonNode* _json_object(JsonNode** jnodes) {
+JsonNode* json_object_impl(JsonNode** jnodes) {
 	JsonNode* jobject = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	int i;
 	char* identifier = NULL;
@@ -110,7 +111,7 @@ JsonNode* _json_object(JsonNode** jnodes) {
 	return jobject;
 }
 
-JsonNode* _json_array(JsonNode** jnodes) {
+JsonNode* json_array_impl(JsonNode** jnodes) {
 	JsonNode* jarray = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int i;
 	for (i = 0; jnodes[i]; i++) {
@@ -227,7 +228,10 @@ static JsonNode* _skip(FILE* jstream) {
 
 static JsonNode* _object(FILE* jstream) {
 	DEBUG("entered _object");
-	fgetc(jstream); // Consume the '{'
+	if (!_expect('{', fgetc(jstream))) { // Consume the '{'
+		DEBUG("object missing starting brace, bailing out");
+		return NULL;
+	}
 	DEBUG("( { ) parsed");
 	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
@@ -255,7 +259,7 @@ static JsonNode* _object(FILE* jstream) {
 		}
 	}
 	// Consume the '}'
-	if (fgetc(jstream) != '}') {
+	if (!_expect('}', fgetc(jstream))) {
 		jnode_free(jnode);
 		DEBUG("( } ) missing, bailing out");
 		return NULL;
@@ -267,7 +271,10 @@ static JsonNode* _object(FILE* jstream) {
 
 static JsonNode* _array(FILE* jstream) {
 	DEBUG("entered _array");
-	fgetc(jstream); // Consume the '['
+	if (!_expect('[', fgetc(jstream))) { // Consume the '['
+		DEBUG("array missing starting bracket, bailing out");
+		return NULL;
+	}
 	DEBUG("( [ ) parsed");
 	JsonNode* jnode = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int nextChar;
@@ -285,7 +292,7 @@ static JsonNode* _array(FILE* jstream) {
 		jnode_append(jnode, appendee);
 	}
 	// Consume the ']'
-	if (fgetc(jstream) != ']') {
+	if (!_expect('[', fgetc(jstream))) {
 		jnode_free(jnode);
 		DEBUG("( ] ) missing, bailing out");
 		return NULL;
@@ -451,6 +458,10 @@ static parserFunc _getParser(int character) {
 			}
 			return _skip;
 	}
+}
+
+static inline bool _expect(int expected, int character) {
+	return expected == character;
 }
 
 static inline bool _iscomplex(JsonType type) {
