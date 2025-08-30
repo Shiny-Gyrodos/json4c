@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // NOTE: Only JSON_OBJECT and JSON_ARRAY are ever combined.
 typedef enum {
@@ -84,13 +85,13 @@ JsonNode* json_get(JsonNode*, size_t, ...);
 #define JSON_COMPLEX_GROW_MULTIPLIER 2
 #endif
 #ifndef JSON_DEFAULT_ALLOC
-#define JSON_DEFAULT_ALLOC malloc
+#define JSON_DEFAULT_ALLOC std_malloc // malloc wrapper
 #endif
 #ifndef JSON_DEFAULT_FREE
-#define JSON_DEFAULT_FREE free
+#define JSON_DEFAULT_FREE std_free // free wrapper
 #endif
 // WARNING: Allocator should only be set before json nodes are created or after they are freed.
-void json_setAllocator(void* (*json_alloc)(size_t), void (*json_free)(void*));
+void json_setAllocator(void* (*custom_alloc)(void*, ptrdiff_t), void (*custom_free)(void*, void*));
 void json_resetAllocator(void);
 
 #endif // JSON4C_GUARD

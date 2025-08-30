@@ -10,11 +10,24 @@
 #ifdef JSON4C_DEBUG
 #define DEBUG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
 #else
-#define DEBUG(msg) // Idk if there is a better way to compile to nothing.
+#define DEBUG(msg) // Compile to nothing
 #endif
 
-static void* (*json_alloc)(size_t) = JSON_DEFAULT_ALLOC;
-static void (*json_free)(void*) = JSON_DEFAULT_FREE;
+static void* std_malloc(void* context, ptrdiff_t size) {
+	(void)context;
+	return malloc(size);
+}
+
+static void std_free(void* context, void* ptr) {
+	(void)context;
+	free(ptr);
+}
+
+static struct {
+	void* (*json_alloc)(void* context, ptrdiff_t size);
+	void (*json_free)(void* context, void* ptr);
+	void* context;
+} allocator = {JSON_DEFAULT_ALLOC, JSON_DEFAULT_FREE};
 
 #define PRIVATE_DEFINITIONS
 // Parsers
@@ -35,19 +48,18 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 static parserFunc _getParser(int);
 static bool _iscomplex(JsonType type);
 static int _fpeek(FILE*);
-static char* _strcombine(const char*, const char*);
 static char* _scanUntil(FILE*, char*);
 static char* _scanWhile(FILE*, bool (*)(int));
 #undef PRIVATE_DEFINITIONS
 
 #define PUBLIC_IMPLEMENTATIONS
 JsonNode* jnode_create(char* identifier, JsonValue value) {
-	JsonNode* jnode = json_alloc(sizeof(JsonNode));
+	JsonNode* jnode = allocator.json_alloc(allocator.context, sizeof(JsonNode));
 	if (!jnode) return NULL;
 	jnode->identifier = identifier;
 	jnode->value = value;
 	if (_iscomplex(value.type)) {
-		jnode->value.jcomplex.nodes = json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
+		jnode->value.jcomplex.nodes = allocator.json_alloc(allocator.context, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
 		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
 		jnode->value.jcomplex.count = 0;
@@ -75,10 +87,10 @@ void jnode_free(JsonNode* jnode) {
 			jnode_free(jnode->value.jcomplex.nodes[i]);
 		}
 	} else if (jnode->value.type == JSON_STRING) {
-		json_free(jnode->value.string);
+		allocator.json_free(allocator.context, jnode->value.string);
 	}
-	json_free(jnode->identifier);
-	json_free(jnode);
+	allocator.json_free(allocator.context, jnode->identifier);
+	allocator.json_free(allocator.context, jnode);
 }
 
 
@@ -182,22 +194,28 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 }
 
 
-void json_setAllocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*)) {
+void json_setAllocator(void* (*custom_malloc)(void*, ptrdiff_t), void (*custom_free)(void*, void*)) {
 	if (!custom_malloc || !custom_free) return;
-	json_alloc = custom_malloc;
-	json_free = custom_free;
+	allocator.json_alloc = custom_malloc;
+	allocator.json_free = custom_free;
 }
 
 void json_resetAllocator(void) {
-	json_alloc = malloc;
-	json_free = free;
+	allocator.json_alloc = JSON_DEFAULT_ALLOC;
+	allocator.json_free = JSON_DEFAULT_FREE;
+	allocator.context = NULL;
 }
 #undef PUBLIC_IMPLEMENTATIONS
 
 #define PRIVATE_IMPLEMENTATIONS
 // Predicates
 static bool _intPredicate(int character) { return isdigit(character); }
-static bool _realPredicate(int character) { return character == '.' || isdigit(character); }
+static bool _realPredicate(int character) { // TODO: fix bandaid fix
+	return character == '.' || character == 'e' || character == 'E' || isdigit(character); 
+}
+static bool _numberPrefixPredicate(int character) { 
+	return character == '+' || character == '-' || isdigit(character); 
+}
 static bool _letterPredicate(int character) { return isalpha(character); }
 
 static JsonNode* _skip(FILE* jstream) {
@@ -222,7 +240,7 @@ static JsonNode* _object(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			json_free(appendee);
+			allocator.json_free(allocator.context, appendee);
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			// We have an identifier!
@@ -261,7 +279,7 @@ static JsonNode* _array(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			json_free(appendee);
+			allocator.json_free(allocator.context, appendee);
 			continue;
 		}
 		jnode_append(jnode, appendee);
@@ -291,7 +309,7 @@ static JsonNode* _boolean(FILE* jstream) {
 		DEBUG("_boolean failed to parse");
 		jnode = NULL;
 	}
-	json_free(boolString);
+	allocator.json_free(allocator.context, boolString);
 	DEBUG("exited _boolean");
 	return jnode;
 }
@@ -321,8 +339,8 @@ static JsonNode* _number(FILE* jstream) {
 		numberString = strcat(numberString, appendee);
 		char* end;
 		double real = strtod(numberString, &end);
-		json_free(appendee);
-		json_free(numberString);
+		allocator.json_free(allocator.context, appendee);
+		allocator.json_free(allocator.context, numberString);
 		#ifdef JSON4C_DEBUG
 		printf("[%s:%d] ( %f ) parsed\n", __FILE__, __LINE__, real);
 		#endif
@@ -330,7 +348,7 @@ static JsonNode* _number(FILE* jstream) {
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
-	json_free(numberString);
+	allocator.json_free(allocator.context, numberString);
 	#ifdef JSON4C_DEBUG
 	printf("[%s:%d] ( %d ) parsed\n", __FILE__, __LINE__, integer);
 	#endif
@@ -349,7 +367,7 @@ static JsonNode* _null(FILE* jstream) {
 		DEBUG("_null failed to parse");
 		jnode = NULL;
 	}
-	json_free(nullString);
+	allocator.json_free(allocator.context, nullString);
 	DEBUG("exited _null");
 	return jnode;
 }
@@ -374,14 +392,15 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 			fprintf(jsonFile, "%s%c\n", firstIndent, open);
 			int i;
 			for (i = 0; i < jnode->value.jcomplex.count; i++) {
-				char* newIndent = _strcombine(indent, "\t");
+				char* newIndent = allocator.json_alloc(allocator.context, strlen(indent) + 1);
+				sprintf(newIndent, "%s\t", indent);
 				_serialize(
 					jsonFile, 
 					jnode->value.jcomplex.nodes[i], 
 					newIndent, 
 					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
 				);
-				json_free(newIndent); // _strcombine return value is malloc'ed
+				allocator.json_free(allocator.context, newIndent);
 			}
 			fprintf(jsonFile, "%s%c%s", indent, close, extra);
 			break;
@@ -434,7 +453,7 @@ static parserFunc _getParser(int character) {
 	}
 }
 
-static bool _iscomplex(JsonType type) {
+static inline bool _iscomplex(JsonType type) {
 	return type == JSON_OBJECT || type == JSON_ARRAY;
 }
 
@@ -443,25 +462,9 @@ static int _fpeek(FILE* stream) {
 	return character == EOF ? EOF : ungetc(character, stream);
 }
 
-static char* _strcombine(const char* s1, const char* s2) {
-	// + 1 for '\0'
-	char* string = json_alloc(strlen(s1) + strlen(s2) + 1);
-	if (!string) return NULL;
-	int i;
-	for (i = 0; s1[i] != '\0'; i++) {
-		string[i] = s1[i];
-	}
-	int j;
-	for (j = 0; s2[j] != '\0'; i++, j++) {
-		string[i] = s2[j];
-	}
-	string[i] = '\0';
-	return string;
-}
-
 static char* _scanUntil(FILE* stream, char* delimiters) {
 	if (!stream || !delimiters) return NULL;
-	char* string = json_alloc(8);
+	char* string = allocator.json_alloc(allocator.context, 8);
 	if (!string) return NULL;
 	size_t max = 8;
 	size_t count = 0;
@@ -471,7 +474,7 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				json_free(string);
+				allocator.json_free(allocator.context, string);
 				return NULL;
 			}
 			string = temp;
@@ -483,13 +486,13 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 		}
 		string[count++] = nextChar;
 	}
-	json_free(string);
+	allocator.json_free(allocator.context, string);
 	return NULL;
 }
 
 static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 	if (!stream || !predicate) return NULL;
-	char* string = json_alloc(8);
+	char* string = allocator.json_alloc(allocator.context, 8);
 	if (!string) return NULL;
 	size_t max = 8;
 	size_t count = 0;
@@ -499,7 +502,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				json_free(string);
+				allocator.json_free(allocator.context, string);
 				return NULL;
 			}
 			string = temp;
@@ -511,7 +514,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 		}
 		string[count++] = nextChar;
 	}
-	json_free(string);
+	allocator.json_free(allocator.context, string);
 	return NULL;
 }
 #undef PRIVATE_IMPLEMENTATIONS
