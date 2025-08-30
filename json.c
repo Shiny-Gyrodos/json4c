@@ -13,19 +13,27 @@
 #define DEBUG(msg) // Compile to nothing
 #endif
 
+#define SIZE_ALLOCED(var) 				\
+	_Generic((var),						\
+		char*: strlen(var),				\
+		const char*: strlen(var),		\
+		JsonNode*: sizeof(JsonNode)		\
+	)
+
 static void* std_malloc(void* context, ptrdiff_t size) {
 	(void)context;
 	return malloc(size);
 }
 
-static void std_free(void* context, void* ptr) {
+static void std_free(void* context, void* ptr, ptrdiff_t size) {
 	(void)context;
+	(void)size;
 	free(ptr);
 }
 
 static struct {
 	void* (*json_alloc)(void* context, ptrdiff_t size);
-	void (*json_free)(void* context, void* ptr);
+	void (*json_free)(void* context, void* ptr, ptrdiff_t size);
 	void* context;
 } allocator = {JSON_DEFAULT_ALLOC, JSON_DEFAULT_FREE};
 
@@ -72,8 +80,10 @@ void jnode_append(JsonNode* parent, JsonNode* child) {
 	if (!parent || !child || !_iscomplex(parent->value.type)) return;
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
 		parent->value.jcomplex.max *= JSON_COMPLEX_GROW_MULTIPLIER;
-		void* temp = realloc(parent->value.jcomplex.nodes, sizeof(JsonNode*) * parent->value.jcomplex.max);
+		void* temp = allocator.json_alloc(allocator.context, sizeof(JsonNode*) * parent->value.jcomplex.max);
 		if (!temp) return;
+		memmove(temp, parent->value.jcomplex.nodes, sizeof(JsonNode*) * parent->value.jcomplex.count);
+		allocator.json_free(allocator.context, parent->value.jcomplex.nodes, 0);
 		parent->value.jcomplex.nodes = temp;
 	}
 	parent->value.jcomplex.nodes[parent->value.jcomplex.count] = child;
@@ -88,10 +98,10 @@ void jnode_free(JsonNode* jnode) {
 			jnode_free(jnode->value.jcomplex.nodes[i]);
 		}
 	} else if (jnode->value.type == JSON_STRING) {
-		allocator.json_free(allocator.context, jnode->value.string);
+		allocator.json_free(allocator.context, jnode->value.string, strlen(jnode->value.string));
 	}
-	allocator.json_free(allocator.context, jnode->identifier);
-	allocator.json_free(allocator.context, jnode);
+	allocator.json_free(allocator.context, jnode->identifier, strlen(jnode->identifier));
+	allocator.json_free(allocator.context, jnode, sizeof(JsonNode));
 }
 
 
@@ -150,6 +160,10 @@ bool json_write(char* path, JsonNode* jnode, char* indent) {
 }
 
 
+JsonNode* json_parse(char* buffer, ptrdiff_t length) {
+	return NULL; // Placeholder
+}
+
 JsonNode* json_parseFile(char* path) {
 	const char* READ = "r";
 	FILE* jstream = fopen(path, READ);
@@ -195,7 +209,7 @@ JsonNode* json_get(JsonNode* root, size_t count, ...) {
 }
 
 
-void json_setAllocator(void* (*custom_malloc)(void*, ptrdiff_t), void (*custom_free)(void*, void*)) {
+void json_setAllocator(void* (*custom_malloc)(void*, ptrdiff_t), void (*custom_free)(void*, void*, ptrdiff_t)) {
 	if (!custom_malloc || !custom_free) return;
 	allocator.json_alloc = custom_malloc;
 	allocator.json_free = custom_free;
@@ -244,7 +258,7 @@ static JsonNode* _object(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			allocator.json_free(allocator.context, appendee);
+			allocator.json_free(allocator.context, appendee, sizeof(JsonNode));
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			// We have an identifier!
@@ -286,7 +300,7 @@ static JsonNode* _array(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			allocator.json_free(allocator.context, appendee);
+			allocator.json_free(allocator.context, appendee, sizeof(JsonNode));
 			continue;
 		}
 		jnode_append(jnode, appendee);
@@ -316,7 +330,7 @@ static JsonNode* _boolean(FILE* jstream) {
 		DEBUG("_boolean failed to parse");
 		jnode = NULL;
 	}
-	allocator.json_free(allocator.context, boolString);
+	allocator.json_free(allocator.context, boolString, strlen(boolString));
 	DEBUG("exited _boolean");
 	return jnode;
 }
@@ -343,11 +357,11 @@ static JsonNode* _number(FILE* jstream) {
 	char* numberString = _scanWhile(jstream, _intPredicate);
 	if (_fpeek(jstream) == '.') {
 		char* appendee = _scanWhile(jstream, _realPredicate);
-		numberString = strcat(numberString, appendee);
+		numberString = strcat(numberString, appendee); // TODO: replace strcat
 		char* end;
 		double real = strtod(numberString, &end);
-		allocator.json_free(allocator.context, appendee);
-		allocator.json_free(allocator.context, numberString);
+		allocator.json_free(allocator.context, appendee, strlen(appendee));
+		allocator.json_free(allocator.context, numberString, strlen(numberString));
 		#ifdef JSON4C_DEBUG
 		printf("[%s:%d] ( %f ) parsed\n", __FILE__, __LINE__, real);
 		#endif
@@ -355,7 +369,7 @@ static JsonNode* _number(FILE* jstream) {
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
-	allocator.json_free(allocator.context, numberString);
+	allocator.json_free(allocator.context, numberString, strlen(numberString));
 	#ifdef JSON4C_DEBUG
 	printf("[%s:%d] ( %d ) parsed\n", __FILE__, __LINE__, integer);
 	#endif
@@ -374,7 +388,7 @@ static JsonNode* _null(FILE* jstream) {
 		DEBUG("_null failed to parse");
 		jnode = NULL;
 	}
-	allocator.json_free(allocator.context, nullString);
+	allocator.json_free(allocator.context, nullString, strlen(nullString));
 	DEBUG("exited _null");
 	return jnode;
 }
@@ -407,7 +421,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 					newIndent, 
 					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
 				);
-				allocator.json_free(allocator.context, newIndent);
+				allocator.json_free(allocator.context, newIndent, strlen(newIndent));
 			}
 			fprintf(jsonFile, "%s%c%s", indent, close, extra);
 			break;
@@ -485,7 +499,7 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				allocator.json_free(allocator.context, string);
+				allocator.json_free(allocator.context, string, strlen(string));
 				return NULL;
 			}
 			string = temp;
@@ -497,7 +511,7 @@ static char* _scanUntil(FILE* stream, char* delimiters) {
 		}
 		string[count++] = nextChar;
 	}
-	allocator.json_free(allocator.context, string);
+	allocator.json_free(allocator.context, string, strlen(string));
 	return NULL;
 }
 
@@ -513,7 +527,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 			max *= 2;
 			char* temp = realloc(string, max);
 			if (!temp) {
-				allocator.json_free(allocator.context, string);
+				allocator.json_free(allocator.context, string, strlen(string));
 				return NULL;
 			}
 			string = temp;
@@ -525,7 +539,7 @@ static char* _scanWhile(FILE* stream, bool (predicate)(int)) {
 		}
 		string[count++] = nextChar;
 	}
-	allocator.json_free(allocator.context, string);
+	allocator.json_free(allocator.context, string, strlen(string));
 	return NULL;
 }
 #undef PRIVATE_IMPLEMENTATIONS
