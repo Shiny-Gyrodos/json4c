@@ -1,6 +1,8 @@
 ﻿JSON4C
 ======
 
+WARNING: This project is undergoing massive changes, expect incorrect / missing behaviour, and breaking changes regularly until a stable build is released.
+
 A simple, performant JSON parser written in pure C.
 
 ## Examples
