@@ -1,11 +1,7 @@
 #ifndef JSON4C_SERIALIZER
 #define JSON4C_SERIALIZER
 
-enum JsonSerializationOptions {
-	OPT_DEFAULT	 			= 	1 << 0,
-	OPT_NO_WHITESPACE 		= 	1 << 1,
-	OPT_SINGLE_LINE_EMPTIES = 	1 << 2
-};
+#include "json_allocator.h"
 
 JsonNode* json_object_impl(JsonNode**); // shouldn't be called, use the macro wrapper instead
 #define json_object(...) json_object_impl((JsonNode*[]){__VA_ARGS__, NULL})
@@ -18,6 +14,7 @@ JsonNode* json_int(int);
 JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
-bool json_write(char* buffer, JsonNode* jnode, enum JsonSerializationOptions jopts);
+bool json_write(char* buffer, JsonNode* jnode);
+char* json_toString(JsonNode*);
 
 #endif // JSON4C_SERIALIZER

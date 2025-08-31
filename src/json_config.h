@@ -1,6 +1,13 @@
 #ifndef JSON4C_CONFIG
 #define JSON4C_CONFIG
 
+#undef DEBUG
+#ifdef JSON4C_DEBUG
+#define DEBUG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
+#else
+#define DEBUG(msg) // Compile to nothing
+#endif
+
 #ifndef JSON_COMPLEX_DEFAULT_CAPACITY
 #define JSON_COMPLEX_DEFAULT_CAPACITY 16
 #endif

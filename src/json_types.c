@@ -1,13 +1,14 @@
 #include <string.h>
 
 #include "json_types.h"
+#include "json_config.h"
 
 inline bool json_type_isComplex(JsonType type) {
 	return type == JSON_OBJECT || type == JSON_ARRAY;
 }
 
 
-JsonNode* jnode_create(char* identifier, JsonValue value, Allocator allocator) {
+JsonNode* jnode_create(char* identifier, JsonValue value) {
 	JsonNode* jnode = allocator.json_alloc(sizeof(JsonNode), allocator.context);
 	if (!jnode) return NULL;
 	jnode->identifier = identifier;
@@ -21,7 +22,7 @@ JsonNode* jnode_create(char* identifier, JsonValue value, Allocator allocator) {
 	return jnode;
 }
 
-void jnode_append(JsonNode* parent, JsonNode* child, Allocator allocator) {
+void jnode_append(JsonNode* parent, JsonNode* child) {
 	if (!parent || !child || !json_type_isComplex(parent->value.type)) return;
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
 		void* temp = allocator.json_realloc(
@@ -37,7 +38,7 @@ void jnode_append(JsonNode* parent, JsonNode* child, Allocator allocator) {
 	parent->value.jcomplex.count++;
 }
 
-void jnode_free(JsonNode* jnode, Allocator allocator) {
+void jnode_free(JsonNode* jnode) {
 	if (!jnode) return;
 	if (json_type_isComplex(jnode->value.type)) {
 		int i;

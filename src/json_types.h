@@ -39,10 +39,25 @@ typedef struct JsonNode {
 	struct JsonValue value;
 } JsonNode;
 
+// Casts a JsonNode*
+#define AS_INT(jnode)		((jnode)->value.integer)
+#define AS_REAL(jnode)		((jnode)->value.real)
+#define AS_BOOL(jnode)		((jnode)->value.boolean)
+#define AS_STRING(jnode)	((jnode)->value.string)
+#define AS_ARRAY(jnode)		((jnode)->value.jcomplex)
+#define AS_OBJECT(jnode)	((jnode)->value.jcomplex)
+// Tests a JsonNode*
+#define IS_INT(jnode)		((jnode)->value.type == JSON_INT)
+#define IS_REAL(jnode)		((jnode)->value.type == JSON_REAL)
+#define IS_BOOL(jnode)		((jnode)->value.type == JSON_BOOL)
+#define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
+#define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
+#define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
+
 bool json_type_isComplex(JsonType);
 
-JsonNode* json_node_create(char*, JsonValue, Allocator);
-JsonNode* json_node_append(JsonNode*, JsonNode*, Allocator);
-JsonNode* json_node_free(JsonNode*, Allocator);
+JsonNode* json_node_create(char*, JsonValue,);
+JsonNode* json_node_append(JsonNode*, JsonNode*);
+JsonNode* json_node_free(JsonNode*);
 
 #endif // JSON4C_TYPES

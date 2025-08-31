@@ -1,5 +1,8 @@
 #include "json_serializer.h"
 
+static void _serialize(FILE*, JsonNode*, char*, char*);
+
+
 JsonNode* json_object_impl(JsonNode** jnodes) {
 	JsonNode* jobject = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	int i;
@@ -45,7 +48,7 @@ inline JsonNode* json_string(char* string) {
 	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
-bool json_write(char* path, JsonNode* jnode, char* indent) {
+bool json_write(char* path, JsonNode* jnode) {
 	const char* WRITE = "w";
 	FILE* jsonFile = fopen(path, WRITE);
 	if (!jsonFile) return false;
@@ -53,6 +56,7 @@ bool json_write(char* path, JsonNode* jnode, char* indent) {
 	fclose(jsonFile);
 	return true;
 }
+
 
 // TODO: needs a serious refactor
 static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extra) {
