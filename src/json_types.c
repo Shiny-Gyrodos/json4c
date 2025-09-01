@@ -14,9 +14,9 @@ JsonNode* jnode_create(char* identifier, JsonValue value) {
 	jnode->identifier = identifier;
 	jnode->value = value;
 	if (json_type_isComplex(value.type)) {
-		jnode->value.jcomplex.nodes = allocator.json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY, allocator.context);
-		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_DEFAULT_CAPACITY);
-		jnode->value.jcomplex.max = JSON_COMPLEX_DEFAULT_CAPACITY;
+		jnode->value.jcomplex.nodes = allocator.json_alloc(sizeof(JsonNode*) * JSON_COMPLEX_CAPACITY, allocator.context);
+		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_CAPACITY);
+		jnode->value.jcomplex.max = JSON_COMPLEX_CAPACITY;
 		jnode->value.jcomplex.count = 0;
 	}
 	return jnode;

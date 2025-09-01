@@ -2,7 +2,7 @@
 
 #include "json_allocator.h"
 
-struct Allocator allocator = JSON_ALLOCATOR_DEFAULT;
+struct Allocator json_allocator = JSON_ALLOCATOR_DEFAULT;
 
 
 void* json_std_alloc(ptrdiff_t size, void* context) {
@@ -23,14 +23,25 @@ void json_std_realloc(void* ptr, ptrdiff_t newSize, ptrdiff_t oldSize, void* con
 }
 
 
+void* json_allocator_backupRealloc(void* ptr, ptrdiff_t newSize, ptrdiff_t oldSize, void* context) {
+	void* newptr = json_allocator.alloc(newSize, context);
+	memcpy(newptr, ptr, oldSize);
+	json_allocator.free(ptr, oldSize, context);
+	return newptr;
+}
+
+
 void json_allocator_set(
-	void* (*json_alloc)(ptrdiff_t, void*), 
-	void (*json_free)(void*, ptrdiff_t, void*),
-	void* (*json_realloc)(void*, ptrdiff_t, ptrdiff_t, void*)
+	void* (*custom_alloc)(ptrdiff_t, void*), 
+	void (*custom_free)(void*, ptrdiff_t, void*),
+	void* (*custom_realloc)(void*, ptrdiff_t, ptrdiff_t, void*)
 ) {
-	allocator = (struct Allocator){json_alloc, json_free, json_realloc, context};
+	json_allocator = (struct Allocator){custom_alloc, custom_free, custom_realloc, context};
+	if (!json_allocator.realloc) {
+		json_allocator.realloc = json_allocator_backupRealloc;
+	}
 }
 
 void json_allocator_reset(void) {
-	allocator = JSON_ALLOCATOR_DEFAULT;
+	json_allocator = JSON_ALLOCATOR_DEFAULT;
 }

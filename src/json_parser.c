@@ -1,8 +1,12 @@
 #include "json_parser.h"
 
+// TODO: All parser need to be rewritten to accomodate the new allocator.
+// TODO: Number parser needs extra work to support numbers like -11.86e2
+// TODO: String parser needs extra work to support escaped characters.
+
 // Parsers
-typedef JsonNode* (*parserFunc)(char*, ptrdiff_t);
-typedef JsonNode* parser(char*, ptrdiff_t);
+typedef JsonNode* (*parserFunc)(char*, ptrdiff_t, ptrdiff_t);
+typedef JsonNode* parser(char*, ptrdiff_t, ptrdiff_t);
 static parser _skip;
 static parser _object;
 static parser _array;
@@ -94,14 +98,14 @@ static bool _numberPrefixPredicate(int character) {
 }
 static bool _letterPredicate(int character) { return isalpha(character); }
 
-static JsonNode* _skip(FILE* jstream) {
+static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _skip");
 	fgetc(jstream);
 	DEBUG("exited _skip");
 	return jnode_create(NULL, (JsonValue){JSON_INVALID, 0});
 }
 
-static JsonNode* _object(FILE* jstream) {
+static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _object");
 	if (!_expect('{', fgetc(jstream))) { // Consume the '{'
 		DEBUG("object missing starting brace, bailing out");
@@ -119,7 +123,7 @@ static JsonNode* _object(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			allocator.json_free(allocator.context, appendee, sizeof(JsonNode));
+			json_allocator.free(allocator.context, appendee, sizeof(JsonNode));
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			// We have an identifier!
@@ -144,7 +148,7 @@ static JsonNode* _object(FILE* jstream) {
 	return jnode;
 }
 
-static JsonNode* _array(FILE* jstream) {
+static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _array");
 	if (!_expect('[', fgetc(jstream))) { // Consume the '['
 		DEBUG("array missing starting bracket, bailing out");
@@ -161,7 +165,7 @@ static JsonNode* _array(FILE* jstream) {
 			DEBUG("parser returned NULL, bailing out");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) {
-			allocator.json_free(allocator.context, appendee, sizeof(JsonNode));
+			json_allocator.free(allocator.context, appendee, sizeof(JsonNode));
 			continue;
 		}
 		jnode_append(jnode, appendee);
@@ -177,7 +181,7 @@ static JsonNode* _array(FILE* jstream) {
 	return jnode;
 }
 
-static JsonNode* _boolean(FILE* jstream) {
+static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _boolean");
 	char* boolString = _scanWhile(jstream, _letterPredicate);
 	JsonNode* jnode;
@@ -191,12 +195,12 @@ static JsonNode* _boolean(FILE* jstream) {
 		DEBUG("_boolean failed to parse");
 		jnode = NULL;
 	}
-	allocator.json_free(allocator.context, boolString, strlen(boolString));
+	json_allocator.free(allocator.context, boolString, strlen(boolString));
 	DEBUG("exited _boolean");
 	return jnode;
 }
 
-static JsonNode* _string(FILE* jstream) {
+static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _string");
 	fgetc(jstream); // Consume the '"'
 	char* string = _scanUntil(jstream, "\"");
@@ -213,7 +217,7 @@ static JsonNode* _string(FILE* jstream) {
 	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
-static JsonNode* _number(FILE* jstream) {
+static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _number");
 	char* numberString = _scanWhile(jstream, _intPredicate);
 	if (_fpeek(jstream) == '.') {
@@ -221,8 +225,8 @@ static JsonNode* _number(FILE* jstream) {
 		numberString = strcat(numberString, appendee); // TODO: replace strcat
 		char* end;
 		double real = strtod(numberString, &end);
-		allocator.json_free(allocator.context, appendee, strlen(appendee));
-		allocator.json_free(allocator.context, numberString, strlen(numberString));
+		json_allocator.free(allocator.context, appendee, strlen(appendee));
+		json_allocator.free(allocator.context, numberString, strlen(numberString));
 		#ifdef JSON4C_DEBUG
 		printf("[%s:%d] ( %f ) parsed\n", __FILE__, __LINE__, real);
 		#endif
@@ -230,7 +234,7 @@ static JsonNode* _number(FILE* jstream) {
 		return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
 	}
 	int integer = atoi(numberString);
-	allocator.json_free(allocator.context, numberString, strlen(numberString));
+	json_allocator.free(allocator.context, numberString, strlen(numberString));
 	#ifdef JSON4C_DEBUG
 	printf("[%s:%d] ( %d ) parsed\n", __FILE__, __LINE__, integer);
 	#endif
@@ -238,7 +242,7 @@ static JsonNode* _number(FILE* jstream) {
 	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 
-static JsonNode* _null(FILE* jstream) {
+static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	DEBUG("entered _null");
 	char* nullString = _scanWhile(jstream, _letterPredicate);
 	JsonNode* jnode;
@@ -249,7 +253,7 @@ static JsonNode* _null(FILE* jstream) {
 		DEBUG("_null failed to parse");
 		jnode = NULL;
 	}
-	allocator.json_free(allocator.context, nullString, strlen(nullString));
+	json_allocator.free(allocator.context, nullString, strlen(nullString));
 	DEBUG("exited _null");
 	return jnode;
 }
