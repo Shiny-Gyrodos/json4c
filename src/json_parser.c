@@ -241,7 +241,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 		string[current++] = currentChar;
 	}
 	string[current] = '\0';
-	return string;
+	return string; 
 }
 
 char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
