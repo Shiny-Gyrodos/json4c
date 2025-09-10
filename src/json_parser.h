@@ -3,7 +3,9 @@
 
 #include <stddef.h>
 
-JsonNode* json_parse(char* buffer, ptrdiff_t length, ptrdiff_t offset);
+#include "json_types.h"
+
+JsonNode* json_parse(char* buffer, ptrdiff_t length);
 JsonNode* json_parseFile(char* path);
 JsonNode* json_property(JsonNode*, char*);
 JsonNode* json_index(JsonNode*, int);

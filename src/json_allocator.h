@@ -13,7 +13,7 @@ struct Allocator {
 };
 
 // NOTE: The libraries' allocator is a global variable.
-extern struct Allocator allocator;
+extern struct Allocator json_allocator;
 
 // stdlib wrappers
 void* json_std_alloc(ptrdiff_t, void*);
