@@ -114,8 +114,7 @@ When including json.h you may define some macros for customization, below are al
 ~~~c
 #define JSON_COMPLEX_DEFAULT_CAPACITY 16 // The default capacity of the dynamic array.
 #define JSON_COMPLEX_GROW_MULTIPLIER 2 // How much the dynamic array grows by
-#define JSON_DEFAULT_ALLOC malloc // Custom allocator
-#define JSON_DEFAULT_FREE free // Custom deallocator, both this and the above can also be set with a function call.
+#define JSON_ALLOCATOR_DEFAULT (struct Allocator){json_std_alloc, json_std_free, json_std_realloc, NULL}
 #include "json.h"
 ~~~
 
