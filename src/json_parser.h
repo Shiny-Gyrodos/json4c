@@ -2,6 +2,7 @@
 #define JSON4C_PARSER
 
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "json_types.h"
 

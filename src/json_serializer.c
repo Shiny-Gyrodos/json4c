@@ -1,10 +1,13 @@
+#include <stdio.h>
+
 #include "json_serializer.h"
+#include "json_types.h"
 
 static void _serialize(FILE*, JsonNode*, char*, char*);
 
 
 JsonNode* json_object_impl(JsonNode** jnodes) {
-	JsonNode* jobject = jnode_create(NULL, (JsonValue){JSON_OBJECT, 0});
+	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	int i;
 	char* identifier = NULL;
 	for (i = 0; jnodes[i]; i++) {
@@ -13,46 +16,46 @@ JsonNode* json_object_impl(JsonNode** jnodes) {
 		} else {
 			jnodes[i]->identifier = identifier;
 			identifier = NULL;
-			jnode_append(jobject, jnodes[i]);
+			json_node_append(jobject, jnodes[i]);
 		}
 	}
 	return jobject;
 }
 
 JsonNode* json_array_impl(JsonNode** jnodes) {
-	JsonNode* jarray = jnode_create(NULL, (JsonValue){JSON_ARRAY, 0});
+	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	int i;
 	for (i = 0; jnodes[i]; i++) {
-		jnode_append(jarray, jnodes[i]);
+		json_node_append(jarray, jnodes[i]);
 	}
 	return jarray;
 }
 
 inline JsonNode* json_bool(bool boolean) {
-	return jnode_create(NULL, (JsonValue){JSON_BOOL, .boolean = boolean});
+	return json_node_create(NULL, (JsonValue){JSON_BOOL, .boolean = boolean});
 }
 
 inline JsonNode* json_int(int integer) {
-	return jnode_create(NULL, (JsonValue){JSON_INT, .integer = integer});
+	return json_node_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 
 inline JsonNode* json_real(double real) {
-	return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
+	return json_node_create(NULL, (JsonValue){JSON_REAL, .real = real});
 }
 
 inline JsonNode* json_null(void) {
-	return jnode_create(NULL, (JsonValue){JSON_NULL, 0});
+	return json_node_create(NULL, (JsonValue){JSON_NULL, 0});
 }
 
 inline JsonNode* json_string(char* string) {
-	return jnode_create(NULL, (JsonValue){JSON_STRING, .string = string});
+	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
 bool json_write(char* path, JsonNode* jnode) {
 	const char* WRITE = "w";
 	FILE* jsonFile = fopen(path, WRITE);
 	if (!jsonFile) return false;
-	_serialize(jsonFile, jnode, indent, "");
+	_serialize(jsonFile, jnode, "", "");
 	fclose(jsonFile);
 	return true;
 }
@@ -78,7 +81,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 			fprintf(jsonFile, "%s%c\n", firstIndent, open);
 			int i;
 			for (i = 0; i < jnode->value.jcomplex.count; i++) {
-				char* newIndent = allocator.json_alloc(allocator.context, strlen(indent) + 1);
+				char* newIndent = json_allocator.alloc(strlen(indent) + 1, json_allocator.context);
 				sprintf(newIndent, "%s\t", indent);
 				_serialize(
 					jsonFile, 
@@ -86,7 +89,7 @@ static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extr
 					newIndent, 
 					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
 				);
-				allocator.json_free(allocator.context, newIndent, strlen(newIndent));
+				json_allocator.free(newIndent, strlen(newIndent), json_allocator.context);
 			}
 			fprintf(jsonFile, "%s%c%s", indent, close, extra);
 			break;

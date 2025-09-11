@@ -1,6 +1,8 @@
 #ifndef JSON4C_SERIALIZER
 #define JSON4C_SERIALIZER
 
+#include <stdbool.h>
+
 #include "json_allocator.h"
 
 JsonNode* json_object_impl(JsonNode**); // shouldn't be called, use the macro wrapper instead
@@ -15,6 +17,5 @@ JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
 bool json_write(char* buffer, JsonNode* jnode);
-char* json_toString(JsonNode*);
 
 #endif // JSON4C_SERIALIZER

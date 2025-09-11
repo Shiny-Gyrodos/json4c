@@ -5,7 +5,7 @@
 
 #include "json.h"
 
+#include "json_types.c"
 #include "json_allocator.c"
 #include "json_parser.c"
 #include "json_serializer.c"
-#include "json_types.c"

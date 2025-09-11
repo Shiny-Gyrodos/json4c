@@ -6,6 +6,8 @@
 #ifndef JSON4C_TYPES
 #define JSON4C_TYPES
 
+#include <stdbool.h>
+
 #include "json_allocator.h"
 
 typedef enum {
@@ -20,7 +22,7 @@ typedef enum {
 } JsonType;
 
 typedef struct JsonValue {
-	enum JsonType type;
+	JsonType type;
 	union {
 		int integer;
 		double real;
@@ -56,8 +58,8 @@ typedef struct JsonNode {
 
 bool json_type_isComplex(JsonType);
 
-JsonNode* json_node_create(char*, JsonValue,);
-JsonNode* json_node_append(JsonNode*, JsonNode*);
-JsonNode* json_node_free(JsonNode*);
+JsonNode* json_node_create(char*, JsonValue);
+void json_node_append(JsonNode*, JsonNode*);
+void json_node_free(JsonNode*);
 
 #endif // JSON4C_TYPES

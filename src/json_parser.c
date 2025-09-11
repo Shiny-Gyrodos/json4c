@@ -1,7 +1,10 @@
 #include <stdbool.h>
 #include <math.h.>
+#include <ctype.h>
+#include <stdio.h>
 
 #include "json_parser.h"
+#include "json_types.h"
 
 // TODO: Number parser needs extra work to support numbers like -11.86e2
 // TODO: String parser needs extra work to support escaped characters.
@@ -23,6 +26,8 @@ static bool _bufexpect(char, char*, ptrdiff_t, ptrdiff_t*);
 static char _bufget(char*, ptrdiff_t, ptrdiff_t*);
 static char _bufput(char, char*, ptrdiff_t, ptrdiff_t*);
 static char _bufpeek(char*, ptrdiff_t, ptrdiff_t);
+static char* _scanUntil(char*, char*, ptrdiff_t, ptrdiff_t*);
+static char* _scanWhile(bool (*predicate)(char), char*, ptrdiff_t, ptrdiff_t*);
 
 
 JsonNode* json_parse(char* buffer, ptrdiff_t length) {
@@ -34,7 +39,21 @@ JsonNode* json_parse(char* buffer, ptrdiff_t length) {
 }
 
 JsonNode* json_parseFile(char* path) {
-	return NULL; // placeholder
+	FILE* jsonStream = fopen(path, "r");
+	if (!jsonStream) return NULL;
+	fseek(jsonStream, 0, SEEK_END);
+	long length = ftell(jsonStream);
+	rewind(jsonStream);
+	
+	char* buffer = json_allocator.alloc(length, json_allocator.context);
+	if (!buffer) {
+		fclose(jsonStream);
+		return NULL;
+	}
+	fread(buffer, 1, length, jsonStream);
+	fclose(jsonStream);
+	
+	return json_parse(buffer, length);
 }
 
 JsonNode* json_property(JsonNode* jnode, char* identifier) {
@@ -72,10 +91,10 @@ JsonNode* json_get(JsonNode* root, ptrdiff_t count, ...) {
 
 
 // Predicates
-static bool _numberPredicate(int c) { // TODO: fix bandaid fix
+static bool _numberPredicate(char c) { // TODO: fix bandaid fix
 	return c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-' || isdigit(c); 
 }
-static bool _letterPredicate(int character) { return isalpha(character); }
+static bool _letterPredicate(char character) { return isalpha(character); }
 
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	_bufget(buffer, length, offset);
@@ -87,7 +106,7 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
 	char nextChar;
-	while ((nextChar = _bufpeek(buffer, length, *offset)) != '}' && offset < length) {
+	while ((nextChar = _bufpeek(buffer, length, *offset)) != '}' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
@@ -116,7 +135,7 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!_bufexpect('[', buffer, length, offset)) return NULL;
 	JsonNode* jarray = json_node_create(NULL, (JsonValue){0, JSON_ARRAY});
 	char nextChar;
-	while ((nextChar = _bufpeek(buffer, length, *offset)) != ']' && offset < length) {
+	while ((nextChar = _bufpeek(buffer, length, *offset)) != ']' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
@@ -168,15 +187,15 @@ static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (floor(real) == real) { // TODO: make sure this actually works (floating-point weirdness)
 		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int)real});
 	}
-	return jnode_create(NULL, (JsonValue){JSON_REAL, .real = real});
+	return json_node_create(NULL, (JsonValue){JSON_REAL, .real = real});
 }
 
 static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	char* nullString = _scanWhile(jstream, _letterPredicate);
+	char* nullString = _scanWhile(_letterPredicate, buffer, length, offset);
 	if (!nullString) return NULL;
 	JsonNode* jnode = NULL;
 	if (strcmp(nullString, "null") == 0) {
-		jnode = jnode_create(NULL, (JsonValue){JSON_NULL, 0});
+		jnode = json_node_create(NULL, (JsonValue){JSON_NULL, 0});
 	}
 	json_allocator.free(nullString, strlen(nullString), json_allocator.context);
 	return jnode;
@@ -230,8 +249,9 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	ptrdiff_t max = 16;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
+	if (!string) return NULL;
 	char currentChar;
-	while (!strchr(delimiters, currentChar = _bufget(buffer, length, offset)) && *offset < length) {
+	while (*offset < length && !strchr(delimiters, currentChar = _bufget(buffer, length, offset))) {
 		if (current >= max - 2) { // minus 2 to leave room for null terminating character
 			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
 			if (!temp) return NULL;
@@ -249,8 +269,9 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	ptrdiff_t max = 16;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
+	if (!string) return NULL;
 	char currentChar;
-	while (predicate(currentChar = _bufget(buffer, length, offset)) && *offset < length) {
+	while (*offset < length && predicate(currentChar = _bufget(buffer, length, offset))) {
 		if (current >= max - 2) { // minus 2 to leave room for null terminating character
 			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
 			if (!temp) return NULL;
