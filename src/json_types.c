@@ -51,6 +51,8 @@ void json_node_free(JsonNode* jnode) {
 	} else if (jnode->value.type == JSON_STRING) {
 		json_allocator.free(jnode->value.string, strlen(jnode->value.string), json_allocator.context);
 	}
-	json_allocator.free(jnode->identifier, strlen(jnode->identifier), json_allocator.context);
+	if (jnode->identifier) {
+		json_allocator.free(jnode->identifier, strlen(jnode->identifier), json_allocator.context);		
+	}
 	json_allocator.free(jnode, sizeof(JsonNode), json_allocator.context);
 }
