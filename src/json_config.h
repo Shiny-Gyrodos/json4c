@@ -3,7 +3,7 @@
 
 #undef DEBUG
 #ifdef JSON4C_DEBUG
-#define DEBUG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
+#define DEBUG(msg, ...) printf("[%s:%d] " msg "\n", __FILE__, __LINE__,##__VA_ARGS__)
 #else
 #define DEBUG(msg) // Compile to nothing
 #endif
