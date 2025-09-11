@@ -5,6 +5,7 @@
 
 #include "json_parser.h"
 #include "json_types.h"
+#include "json_config.h"
 
 // TODO: Number parser needs extra work to support numbers like -11.86e2
 // TODO: String parser needs extra work to support escaped characters.
@@ -12,6 +13,7 @@
 // Parsers
 typedef JsonNode* (*parserFunc)(char*, ptrdiff_t, ptrdiff_t*);
 typedef JsonNode* parser(char*, ptrdiff_t, ptrdiff_t*);
+static parser _error;
 static parser _skip;
 static parser _object;
 static parser _array;
@@ -45,13 +47,15 @@ JsonNode* json_parseFile(char* path) {
 	long length = ftell(jsonStream);
 	rewind(jsonStream);
 	
-	char* buffer = json_allocator.alloc(length, json_allocator.context);
+	char* buffer = json_allocator.alloc(length + 1, json_allocator.context);
 	if (!buffer) {
 		fclose(jsonStream);
 		return NULL;
 	}
-	fread(buffer, 1, length, jsonStream);
+	size_t bytesRead = fread(buffer, 1, length, jsonStream);
 	fclose(jsonStream);
+	buffer[bytesRead] = '\0';
+	DEBUG("file read as: %s", buffer);
 	
 	return json_parse(buffer, length);
 }
@@ -96,13 +100,23 @@ static bool _numberPredicate(char c) { // TODO: fix bandaid fix
 }
 static bool _letterPredicate(char character) { return isalpha(character); }
 
+static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _error");
+	DEBUG("exited _error");
+	return NULL;
+}
+
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _skip");
 	_bufget(buffer, length, offset);
+	DEBUG("exited _skip");
 	return json_node_create(NULL, (JsonValue){JSON_INVALID, 0});
 }
 
 static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _object");
 	if (!_bufexpect('{', buffer, length, offset)) return NULL;
+	DEBUG("( { ) parsed");
 	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
 	char nextChar;
@@ -112,8 +126,11 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		if (!appendee) {
 			json_node_free(jobject);
 			json_node_free(appendee);
+			DEBUG("parser returned NULL, bailing out");
+			DEBUG("exited _object");
 			return NULL;
 		} else if (appendee->value.type == JSON_INVALID) { // TODO: this is wasteful, FIX
+			DEBUG("_object continued");
 			json_node_free(appendee);
 			continue;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
@@ -126,13 +143,19 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	}
 	if (!_bufexpect('}', buffer, length, offset)) {
 		json_node_free(jobject);
+		DEBUG("( } ) missing");
+		DEBUG("exited _object");
 		return NULL;
 	}
+	DEBUG("( } ) parsed");
+	DEBUG("exited _object");
 	return jobject;
 }
 
 static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _array");
 	if (!_bufexpect('[', buffer, length, offset)) return NULL;
+	DEBUG("( [ ) parsed");
 	JsonNode* jarray = json_node_create(NULL, (JsonValue){0, JSON_ARRAY});
 	char nextChar;
 	while ((nextChar = _bufpeek(buffer, length, *offset)) != ']' && *offset < length) {
@@ -141,8 +164,10 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		if (!appendee) {
 			json_node_free(jarray);
 			json_node_free(appendee);
+			DEBUG("exited _array");
 			return NULL; // TODO: better error reporting
 		} else if (appendee->value.type == JSON_INVALID) {
+			DEBUG("_array continued");
 			json_node_free(appendee);
 			continue;
 		}
@@ -150,34 +175,45 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	}
 	if (!_bufexpect(']', buffer, length, offset)) {
 		json_node_free(jarray);
+		DEBUG("exited _array");
 		return NULL;
 	}
+	DEBUG("( ] ) parsed");
+	DEBUG("exited _array");
 	return jarray;
 }
 
 static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _boolean");
 	char* boolString = _scanWhile(_letterPredicate, buffer, length, offset);
 	JsonNode* jnode;
 	if (strcmp(boolString, "true") == 0) {
+		DEBUG("( true ) parsed");
 		jnode = json_node_create(NULL, (JsonValue){JSON_BOOL, .boolean = true});
 	} else if (strcmp(boolString, "false") == 0) {
+		DEBUG("( false ) parsed");
 		jnode = json_node_create(NULL, (JsonValue){JSON_BOOL, .boolean = false});
 	} else {
 		jnode = NULL;
 	}
 	json_allocator.free(boolString, strlen(boolString), json_allocator.context);
+	DEBUG("exited _boolean");
 	return jnode;
 }
 
 static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _string");
 	_bufget(buffer, length, offset); // Not _bufexpect because at this point we know it's '"'
 	char* string = _scanUntil("\"", buffer, length, offset);
+	DEBUG("( \"%s\" ) parsed", string);
 	if (!string) return NULL;
 	_bufget(buffer, length, offset);
+	DEBUG("exited _string");
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
 static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _number");
 	char* numString = _scanWhile(_numberPredicate, buffer, length, offset);
 	if (!numString) return NULL;
 	char* end;
@@ -185,19 +221,26 @@ static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	*offset = end - buffer; // set offset to last non number character.
 	json_allocator.free(numString, strlen(numString), json_allocator.context);
 	if (floor(real) == real) { // TODO: make sure this actually works (floating-point weirdness)
+		DEBUG("( %d ) parsed", (int)real);
+		DEBUG("exited _number");
 		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int)real});
 	}
+	DEBUG("( %lf ) parsed", real);
+	DEBUG("exited _number");
 	return json_node_create(NULL, (JsonValue){JSON_REAL, .real = real});
 }
 
 static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("entered _null");
 	char* nullString = _scanWhile(_letterPredicate, buffer, length, offset);
 	if (!nullString) return NULL;
 	JsonNode* jnode = NULL;
 	if (strcmp(nullString, "null") == 0) {
+		DEBUG("( null ) parsed");
 		jnode = json_node_create(NULL, (JsonValue){JSON_NULL, 0});
 	}
 	json_allocator.free(nullString, strlen(nullString), json_allocator.context);
+	DEBUG("exited _null");
 	return jnode;
 }
 
@@ -222,25 +265,35 @@ static parserFunc _getParser(char character) {
 		default: // number or whitespace
 			if (isdigit(character)) {
 				return _number;
+			} else if (isspace(character)) {
+				return _skip;
 			}
-			return _skip;
+			return _error;
 	}
 }
 
 static inline bool _bufexpect(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	DEBUG("_bufexpect expected ( %c ) got ( %c )", c, buffer[*offset]);
 	return c == _bufget(buffer, length, offset);
 }
 
 static inline char _bufget(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	if (*offset < length) {
+		DEBUG("_bufget returned ( %c )", buffer[*offset]);
+	}
 	return *offset < length ? buffer[(*offset)++] : buffer[length - 1];
 }
 
 // TODO: It isn't clear enough from the return value when this function fails.
 static inline char _bufput(char character, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	return offset - 1 >= 0 ? buffer[--(*offset)] = character : 0;
+	DEBUG("_bufput put ( %c ) back onto the stream", character);
+	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = character : 0;
 }
 
 static inline char _bufpeek(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
+	if (offset < length) {
+		DEBUG("_bufpeek returned ( %c )", buffer[offset]);
+	}
 	return offset < length ? buffer[offset] : buffer[length - 1];
 }
 
@@ -260,6 +313,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 		}
 		string[current++] = currentChar;
 	}
+	_bufput(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string; 
 }
@@ -280,6 +334,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 		}
 		string[current++] = currentChar;
 	}
+	_bufput(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string;
 }
