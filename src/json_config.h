@@ -2,7 +2,7 @@
 #define JSON4C_CONFIG
 
 #undef DEBUG
-#ifdef JSON4C_DEBUG
+#ifdef JSON_DEBUG
 #define DEBUG(msg, ...) printf("[%s:%d] " msg "\n", __FILE__, __LINE__,##__VA_ARGS__)
 #else
 #define DEBUG(msg) // Compile to nothing
