@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "json_serializer.h"
-#include "json_types.h"
+#include "json_allocator.h"
 
 static void _serialize(FILE*, JsonNode*, char*, char*);
 
