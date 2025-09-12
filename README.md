@@ -3,7 +3,7 @@
 
 WARNING: This project is undergoing massive changes, expect incorrect / missing behaviour, and breaking changes regularly until a stable build is released.
 
-A simple, performant JSON parser written in pure C.
+A simple, flexible JSON library written in pure C.
 
 ## Examples
 
@@ -35,7 +35,7 @@ int main(void) {
 
 int main(void) {
 	// Parse the file and print the number at the 3rd index.
-	JsonNode* numbers = json_parseFile("data\\numbers.json");
+	JsonNode* numberArray = json_parseFile("data\\numbers.json");
 	JsonNode* number = json_index(numbers, 3);
 	printf("number = %d\n", AS_INT(number)); // Would print the number at the 3rd index.
 	json_free(numbers);
@@ -103,7 +103,7 @@ int main(void) {
 
 ## Compilation Flags
 
-Use `-D JSON4C_DEBUG` to print parsing info to stdout.
+Use `-D JSON_DEBUG` to print parsing info to stdout.
 
 ## Customization
 
@@ -112,6 +112,7 @@ Use `-D JSON4C_DEBUG` to print parsing info to stdout.
 When including json.h you may define some macros for customization, below are all the options listed with their default values.
 
 ~~~c
+#define JSON_DEBUG // If you don't want to use a compilation flag
 #define JSON_COMPLEX_DEFAULT_CAPACITY 16 // The default capacity of the dynamic array.
 #define JSON_COMPLEX_GROW_MULTIPLIER 2 // How much the dynamic array grows by
 #define JSON_ALLOCATOR_DEFAULT (struct Allocator){json_std_alloc, json_std_free, json_std_realloc, NULL}
@@ -124,10 +125,10 @@ If you don't want to set the custom allocators with preprocessor macros, you can
 
 ~~~c
 #include "json.h"
-#include "allocator.h"
+#include "your_allocator.h"
 
 int main(void) {
-	json_setAllocator(allocator_alloc, allocator_free);
+	json_setAllocator(your_allocator_alloc, your_allocator_free, your_allocator_realloc, your_allocator_instance);
 	JsonNode* jnode = json_parseFile("data\\foo.json"); // Allocated with allocator_alloc
 	json_free(jnode); // Freed with allocator_free
 	return 0;
@@ -135,4 +136,5 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
