@@ -1,7 +1,7 @@
 ﻿JSON4C
 ======
 
-WARNING: This project is undergoing massive changes, expect incorrect / missing behaviour, and breaking changes regularly until a stable build is released.
+**WARNING**: This project is undergoing massive changes, expect incorrect / missing behaviour, and breaking changes regularly until a stable build is released.
 
 A simple, flexible JSON library written in pure C.
 
@@ -145,6 +145,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
