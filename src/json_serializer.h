@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "json_allocator.h"
+#include "json_types.h"
 
 JsonNode* json_object_impl(JsonNode**); // shouldn't be called, use the macro wrapper instead
 #define json_object(...) json_object_impl((JsonNode*[]){__VA_ARGS__, NULL})
