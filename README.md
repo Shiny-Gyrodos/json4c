@@ -7,7 +7,7 @@ A simple, flexible JSON library written in pure C.
 
 ## Building
 
-JSON4C is a unity build for ease of use. The only files you need to worry about are `json.h` and `json.c`, the rest are exist only for code orginization.
+JSON4C is a unity build for ease of use. The only files you need to worry about are `json.h` and `json.c`, the rest exist only for code orginization.
 
 1. Copy `src` to your project.
 2. Rename `src` to something like `json4c`
@@ -145,6 +145,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
