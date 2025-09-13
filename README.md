@@ -92,16 +92,16 @@ int main(void) {
 		}
 	*/
 	JsonNode* rootObject = json_object(
-		json_string("test_status"), json_string("passing"),
-		json_string("tests_passed"), json_int(123),
-		json_string("tests_failed"), json_int(0),
-		json_string("test_name"), json_null(),
-		json_string("files_tested"), json_array(
+		"test_status", json_string("passing"),
+		"tests_passed", json_int(123),
+		"tests_failed", json_int(0),
+		"test_name", json_null(),
+		"files_tested", json_array(
 			json_string("foo.xyz"),
 			json_string("bar.xyz"),
 			json_string("bazz.xyz")
 		),
-		json_string("test_history"), json_emptyArray()
+		"test_history", json_emptyArray()
 	);
 	// The "" indicates the amount of indentation you want to start with.
 	json_write("data\\test.json", rootObject, "");
