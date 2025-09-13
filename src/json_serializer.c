@@ -11,11 +11,17 @@ JsonNode* json_object_impl(void** ptrs) {
 	int i;
 	char* identifier = NULL;
 	for (i = 0; ptrs[i]; i++) {
-		if (i % 2 == 0) {
+		if (i % 2 == 0) { // starting with the first, every other value is an identifier (char*)
 			identifier = (char*)ptrs[i];
 		} else {
 			JsonNode* jnode = (JsonNode*)ptrs[i];
-			jnode->identifier = json_allocator.alloc(strlen(identifier), json_allocator.context);
+			int length = strlen(identifier);
+			void* temp = json_allocator.alloc(length + 1, json_allocator.context);
+			if (!temp) {
+				json_node_free(jobject);
+				return NULL;
+			}
+			jnode->identifier = temp;
 			strcpy(jnode->identifier, identifier);
 			identifier = NULL;
 			json_node_append(jobject, jnode);
