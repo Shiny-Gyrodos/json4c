@@ -7,8 +7,14 @@
 #include "json_types.h"
 #include "json_config.h"
 
-// TODO: Number parser needs extra work to support numbers like -11.86e2
 // TODO: String parser needs extra work to support escaped characters.
+// TODO: Remove _scanUntil and replace it with a function tailored to string parsing
+// TODO: _error should return something some JsonNode* with type of JSON_ERROR
+// and _skip should return NULL instead as to not waste resources.
+// the library should provide a function for seeing if a parse was successful,
+// and if not, extracting the error.
+// TODO: Extract buffer functions to their own file so they can be used by json_serializer.cabs
+
 
 // Parsers
 typedef JsonNode* (*parserFunc)(char*, ptrdiff_t, ptrdiff_t*);
@@ -61,7 +67,7 @@ JsonNode* json_parseFile(char* path) {
 }
 
 JsonNode* json_property(JsonNode* jnode, char* identifier) {
-	if (!jnode || jnode->value.type != JSON_OBJECT) return NULL;
+	if (!jnode || !identifier || jnode->value.type != JSON_OBJECT) return NULL;
 	int i;
 	for (i = 0; i < jnode->value.jcomplex.count; i++) {
 		if (strcmp(jnode->value.jcomplex.nodes[i]->identifier, identifier) == 0) {
@@ -72,7 +78,8 @@ JsonNode* json_property(JsonNode* jnode, char* identifier) {
 }
 
 JsonNode* json_index(JsonNode* jnode, int index) {
-	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count) return NULL;
+	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count || index < 0) 
+		return NULL;
 	return jnode->value.jcomplex.nodes[index];
 }
 
@@ -80,12 +87,16 @@ JsonNode* json_get(JsonNode* root, ptrdiff_t count, ...) {
 	va_list args;
 	va_start(args, count);
 	while (count --> 0) {
-		if (!root) return NULL;
+		if (!root) {
+			va_end(args);
+			return NULL;
+		}
 		if (root->value.type == JSON_OBJECT) {
 			root = json_property(root, va_arg(args, char*));
 		} else if (root->value.type == JSON_ARRAY) {
 			root = json_index(root, va_arg(args, int));
 		} else {
+			va_end(args);
 			return NULL;
 		}
 	}
@@ -156,7 +167,7 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _array");
 	if (!_bufexpect('[', buffer, length, offset)) return NULL;
 	DEBUG("( [ ) parsed");
-	JsonNode* jarray = json_node_create(NULL, (JsonValue){0, JSON_ARRAY});
+	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	char nextChar;
 	while ((nextChar = _bufpeek(buffer, length, *offset)) != ']' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
@@ -212,18 +223,20 @@ static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
+// TODO: _number isn't compliant with the JSON standard
 static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _number");
 	char* numString = _scanWhile(_numberPredicate, buffer, length, offset);
 	if (!numString) return NULL;
 	char* end;
 	double real = strtod(numString, &end);
-	*offset = end - buffer; // set offset to last non number character.
+	*offset -= &numString[strlen(numString) - 1] - end;
+	double integer;
 	json_allocator.free(numString, strlen(numString), json_allocator.context);
-	if (floor(real) == real) { // TODO: make sure this actually works (floating-point weirdness)
-		DEBUG("( %d ) parsed", (int)real);
+	if (modf(real, &integer) == 0.0) {
+		DEBUG("( %d ) parsed", (int)integer);
 		DEBUG("exited _number");
-		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int)real});
+		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int)integer});
 	}
 	DEBUG("( %lf ) parsed", real);
 	DEBUG("exited _number");
@@ -273,27 +286,19 @@ static parserFunc _getParser(char character) {
 }
 
 static inline bool _bufexpect(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("_bufexpect expected ( %c ) got ( %c )", c, buffer[*offset]);
 	return c == _bufget(buffer, length, offset);
 }
 
 static inline char _bufget(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	if (*offset < length) {
-		DEBUG("_bufget returned ( %c )", buffer[*offset]);
-	}
 	return *offset < length ? buffer[(*offset)++] : buffer[length - 1];
 }
 
 // TODO: It isn't clear enough from the return value when this function fails.
 static inline char _bufput(char character, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("_bufput put ( %c ) back onto the stream", character);
-	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = character : 0;
+	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = character : '\0';
 }
 
 static inline char _bufpeek(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
-	if (offset < length) {
-		DEBUG("_bufpeek returned ( %c )", buffer[offset]);
-	}
 	return offset < length ? buffer[offset] : buffer[length - 1];
 }
 

@@ -6,17 +6,19 @@
 static void _serialize(FILE*, JsonNode*, char*, char*);
 
 
-JsonNode* json_object_impl(JsonNode** jnodes) {
+JsonNode* json_object_impl(void** ptrs) {
 	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	int i;
 	char* identifier = NULL;
-	for (i = 0; jnodes[i]; i++) {
+	for (i = 0; ptrs[i]; i++) {
 		if (i % 2 == 0) {
-			identifier = jnodes[i]->value.string;
+			identifier = (char*)ptrs[i];
 		} else {
-			jnodes[i]->identifier = identifier;
+			JsonNode* jnode = (JsonNode*)ptrs[i];
+			jnode->identifier = json_allocator.alloc(strlen(identifier), json_allocator.context);
+			strcpy(jnode->identifier, identifier);
 			identifier = NULL;
-			json_node_append(jobject, jnodes[i]);
+			json_node_append(jobject, jnode);
 		}
 	}
 	return jobject;
