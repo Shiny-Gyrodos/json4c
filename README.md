@@ -30,7 +30,7 @@ int main(void) {
 	JsonNode* person = json_parseFile("data\\person.json");
 	JsonNode* age = json_property(person, "age");
 	printf("age = %d\n", AS_INT(age)); // Would print the age property.
-	json_free(person);
+	json_node_free(person);
 	return 0;
 }
 ~~~
@@ -47,7 +47,7 @@ int main(void) {
 	JsonNode* numberArray = json_parseFile("data\\numbers.json");
 	JsonNode* number = json_index(numbers, 3);
 	printf("number = %d\n", AS_INT(number)); // Would print the number at the 3rd index.
-	json_free(numbers);
+	json_node_free(numbers);
 	return 0;
 }
 ~~~
@@ -64,7 +64,7 @@ int main(void) {
 	JsonNode* subscribers = json_parseFile("data\\subscribers.json");
 	JsonNode* email = json_get(subscribers, 2, 6, "email"); // The first number denotes the amount of following arguments.
 	printf("email = %s\n", AS_STRING(email)); // Would print the 6th person's email property.
-	json_free(subscribers);
+	json_node_free(subscribers);
 	return 0;
 }
 ~~~
@@ -105,7 +105,7 @@ int main(void) {
 	);
 	// The "" indicates the amount of indentation you want to start with.
 	json_write("data\\test.json", rootObject, "");
-	json_free(rootObject);
+	json_node_free(rootObject);
 	return 0;
 }
 ~~~
@@ -139,7 +139,7 @@ If you don't want to set the custom allocators with preprocessor macros, you can
 int main(void) {
 	json_setAllocator(your_allocator_alloc, your_allocator_free, your_allocator_realloc, your_allocator_instance);
 	JsonNode* jnode = json_parseFile("data\\foo.json"); // Allocated with allocator_alloc
-	json_free(jnode); // Freed with allocator_free
+	json_node_free(jnode); // Freed with allocator_free
 	return 0;
 }
 ~~~
