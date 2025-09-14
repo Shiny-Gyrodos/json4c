@@ -49,12 +49,12 @@ typedef struct JsonNode {
 #define AS_ARRAY(jnode)		((jnode)->value.jcomplex)
 #define AS_OBJECT(jnode)	((jnode)->value.jcomplex)
 // Tests a JsonNode*
-#define IS_INT(jnode)		((jnode)->value.type == JSON_INT)
-#define IS_REAL(jnode)		((jnode)->value.type == JSON_REAL)
-#define IS_BOOL(jnode)		((jnode)->value.type == JSON_BOOL)
-#define IS_STRING(jnode)	((jnode)->value.type == JSON_STRING)
-#define IS_ARRAY(jnode)		((jnode)->value.type == JSON_ARRAY)
-#define IS_OBJECT(jnode)	((jnode)->value.type == JSON_OBJECT)
+#define IS_INT(jnode)		(!(jnode) && (jnode)->value.type == JSON_INT)
+#define IS_REAL(jnode)		(!(jnode) && (jnode)->value.type == JSON_REAL)
+#define IS_BOOL(jnode)		(!(jnode) && (jnode)->value.type == JSON_BOOL)
+#define IS_STRING(jnode)	(!(jnode) && (jnode)->value.type == JSON_STRING)
+#define IS_ARRAY(jnode)		(!(jnode) && (jnode)->value.type == JSON_ARRAY)
+#define IS_OBJECT(jnode)	(!(jnode) && (jnode)->value.type == JSON_OBJECT)
 
 bool json_type_isComplex(JsonType);
 
