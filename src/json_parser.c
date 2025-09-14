@@ -6,6 +6,7 @@
 #include "json_parser.h"
 #include "json_types.h"
 #include "json_config.h"
+#include "json_utils.h"
 
 // TODO: String parser needs extra work to support escaped characters.
 // TODO: Remove _scanUntil and replace it with a function tailored to string parsing
@@ -30,10 +31,10 @@ static parser _null;
 
 // Helpers
 static parserFunc _getParser(char character);
-static bool _bufexpect(char, char*, ptrdiff_t, ptrdiff_t*);
-static char _bufget(char*, ptrdiff_t, ptrdiff_t*);
-static char _bufput(char, char*, ptrdiff_t, ptrdiff_t*);
-static char _bufpeek(char*, ptrdiff_t, ptrdiff_t);
+static bool json_bufexpect(char, char*, ptrdiff_t, ptrdiff_t*);
+static char json_bufget(char*, ptrdiff_t, ptrdiff_t*);
+static char json_bufput(char, char*, ptrdiff_t, ptrdiff_t*);
+static char json_bufpeek(char*, ptrdiff_t, ptrdiff_t);
 static char* _scanUntil(char*, char*, ptrdiff_t, ptrdiff_t*);
 static char* _scanWhile(bool (*predicate)(char), char*, ptrdiff_t, ptrdiff_t*);
 
@@ -41,7 +42,7 @@ static char* _scanWhile(bool (*predicate)(char), char*, ptrdiff_t, ptrdiff_t*);
 JsonNode* json_parse(char* buffer, ptrdiff_t length) {
 	if (length <= 0) return NULL;
 	ptrdiff_t offset = 0;
-	parserFunc firstParser = _getParser(_bufpeek(buffer, length, offset));
+	parserFunc firstParser = _getParser(json_buf_peek(buffer, length, offset));
 	JsonNode* root = firstParser(buffer, length, &offset);
 	return root;
 }
@@ -119,19 +120,19 @@ static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _skip");
-	_bufget(buffer, length, offset);
+	json_buf_get(buffer, length, offset);
 	DEBUG("exited _skip");
 	return json_node_create(NULL, (JsonValue){JSON_INVALID, 0});
 }
 
 static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _object");
-	if (!_bufexpect('{', buffer, length, offset)) return NULL;
+	if (!json_buf_expect('{', buffer, length, offset)) return NULL;
 	DEBUG("( { ) parsed");
 	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
 	char* identifier = NULL;
 	char nextChar;
-	while ((nextChar = _bufpeek(buffer, length, *offset)) != '}' && *offset < length) {
+	while ((nextChar = json_buf_peek(buffer, length, *offset)) != '}' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
@@ -152,7 +153,7 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 			identifier = NULL;
 		}
 	}
-	if (!_bufexpect('}', buffer, length, offset)) {
+	if (!json_buf_expect('}', buffer, length, offset)) {
 		json_node_free(jobject);
 		DEBUG("( } ) missing");
 		DEBUG("exited _object");
@@ -165,11 +166,11 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 
 static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _array");
-	if (!_bufexpect('[', buffer, length, offset)) return NULL;
+	if (!json_buf_expect('[', buffer, length, offset)) return NULL;
 	DEBUG("( [ ) parsed");
 	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, 0});
 	char nextChar;
-	while ((nextChar = _bufpeek(buffer, length, *offset)) != ']' && *offset < length) {
+	while ((nextChar = json_buf_peek(buffer, length, *offset)) != ']' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
@@ -184,7 +185,7 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		}
 		json_node_append(jarray, appendee);
 	}
-	if (!_bufexpect(']', buffer, length, offset)) {
+	if (!json_buf_expect(']', buffer, length, offset)) {
 		json_node_free(jarray);
 		DEBUG("exited _array");
 		return NULL;
@@ -214,11 +215,11 @@ static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 
 static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	DEBUG("entered _string");
-	_bufget(buffer, length, offset); // Not _bufexpect because at this point we know it's '"'
+	json_buf_get(buffer, length, offset); // Not json_bufexpect because at this point we know it's '"'
 	char* string = _scanUntil("\"", buffer, length, offset);
 	DEBUG("( \"%s\" ) parsed", string);
 	if (!string) return NULL;
-	_bufget(buffer, length, offset);
+	json_buf_get(buffer, length, offset);
 	DEBUG("exited _string");
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
@@ -285,23 +286,6 @@ static parserFunc _getParser(char character) {
 	}
 }
 
-static inline bool _bufexpect(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	return c == _bufget(buffer, length, offset);
-}
-
-static inline char _bufget(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	return *offset < length ? buffer[(*offset)++] : buffer[length - 1];
-}
-
-// TODO: It isn't clear enough from the return value when this function fails.
-static inline char _bufput(char character, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = character : '\0';
-}
-
-static inline char _bufpeek(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
-	return offset < length ? buffer[offset] : buffer[length - 1];
-}
-
 char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!delimiters || !buffer || !offset) return NULL;
 	ptrdiff_t max = 16;
@@ -309,7 +293,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) return NULL;
 	char currentChar;
-	while (*offset < length && !strchr(delimiters, currentChar = _bufget(buffer, length, offset))) {
+	while (*offset < length && !strchr(delimiters, currentChar = json_buf_get(buffer, length, offset))) {
 		if (current >= max - 2) { // minus 2 to leave room for null terminating character
 			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
 			if (!temp) return NULL;
@@ -318,7 +302,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 		}
 		string[current++] = currentChar;
 	}
-	_bufput(currentChar, buffer, length, offset);
+	json_buf_put(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string; 
 }
@@ -330,7 +314,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) return NULL;
 	char currentChar;
-	while (*offset < length && predicate(currentChar = _bufget(buffer, length, offset))) {
+	while (*offset < length && predicate(currentChar = json_buf_get(buffer, length, offset))) {
 		if (current >= max - 2) { // minus 2 to leave room for null terminating character
 			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
 			if (!temp) return NULL;
@@ -339,7 +323,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 		}
 		string[current++] = currentChar;
 	}
-	_bufput(currentChar, buffer, length, offset);
+	json_buf_put(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string;
 }
