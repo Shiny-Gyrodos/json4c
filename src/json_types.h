@@ -11,14 +11,15 @@
 #include "json_allocator.h"
 
 typedef enum {
+	JSON_INVALID,
+	JSON_ERROR,
 	JSON_OBJECT,
 	JSON_ARRAY,
 	JSON_INT,
 	JSON_REAL,
 	JSON_STRING,
 	JSON_BOOL,
-	JSON_NULL,
-	JSON_INVALID
+	JSON_NULL
 } JsonType;
 
 typedef struct JsonValue {

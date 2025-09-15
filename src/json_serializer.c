@@ -1,8 +1,13 @@
 #include <stdio.h>
+#include <stddef.h>
 
 #include "json_serializer.h"
 #include "json_allocator.h"
 
+typedef char* (*serializerFunc)(JsonNode*, JsonWriteOption, char*, ptrdiff_t, ptrdiff_t*);
+typedef char* serializer(JsonNode*, JsonWriteOption, char*, ptrdiff_t, ptrdiff_t*);
+
+static serializerFunc _getSerializer(JsonType);
 static void _serialize(FILE*, JsonNode*, char*, char*);
 
 
@@ -59,15 +64,41 @@ inline JsonNode* json_string(char* string) {
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
-bool json_write(char* path, JsonNode* jnode) {
-	const char* WRITE = "w";
-	FILE* jsonFile = fopen(path, WRITE);
-	if (!jsonFile) return false;
-	_serialize(jsonFile, jnode, "", "");
-	fclose(jsonFile);
-	return true;
+
+void json_write(JsonNode* jnode, JsonWriteOption option, char* buffer, ptrdiff_t length) {
+	
 }
 
+void json_writeFile(JsonNode* jnode, JsonWriteOption option, char* path, char* mode) {
+	
+}
+
+
+static serializerFunc _getSerializer(JsonType type) {
+	// NOTE: not sure how _invalid and _error would work, or if they are even necessary
+	switch (type) {
+		case JSON_INVALID:
+			return _invalid;
+		case JSON_ERROR:
+			return _error;
+		case JSON_OBJECT:
+			return _object;
+		case JSON_ARRAY:
+			return _array;
+		case JSON_INT:
+			return _integer;
+		case JSON_REAL:
+			return _real;
+		case JSON_STRING:
+			return _string;
+		case JSON_BOOL:
+			return _bool;
+		case JSON_NULL:
+			return _null;
+		default:
+			return NULL:
+	}
+}
 
 // TODO: needs a serious refactor
 static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extra) {

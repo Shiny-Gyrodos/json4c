@@ -2,8 +2,14 @@
 #define JSON4C_SERIALIZER
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "json_types.h"
+
+typedef enum {
+	JSON_WRITE_PRETTY,
+	JSON_WRITE_COMPRESSED
+} JsonWriteOption;
 
 JsonNode* json_object_impl(void**); // shouldn't be called, use the macro wrapper instead
 #define json_object(...) json_object_impl((void*[]){__VA_ARGS__, NULL})
@@ -16,6 +22,8 @@ JsonNode* json_int(int);
 JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
-bool json_write(char* buffer, JsonNode* jnode);
+
+void json_write(JsonNode* jnode, JsonWriteOption option, char* buffer, ptrdiff_t length);
+void json_writeFile(JsonNode* jnode, JsonWriteOption option, char* path, char* mode);
 
 #endif // JSON4C_SERIALIZER

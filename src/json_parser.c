@@ -14,7 +14,6 @@
 // and _skip should return NULL instead as to not waste resources.
 // the library should provide a function for seeing if a parse was successful,
 // and if not, extracting the error.
-// TODO: Extract buffer functions to their own file so they can be used by json_serializer.cabs
 
 
 // Parsers
