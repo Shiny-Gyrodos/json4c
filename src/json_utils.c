@@ -13,6 +13,11 @@ inline char json_buf_put(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offs
 	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = c : '\0';
 }
 
+// TODO: what if '\0' is just part of the string?
+inline void json_buf_putstr(char* string, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+	for (int i = 0; string[i] != '\0' && json_buf_put(string[i], buffer, length, offset); i++);
+}
+
 inline char json_buf_peek(char* buffer, ptrdiff_t length, ptrdiff_t offset) {
 	return offset < length ? buffer[offset] : buffer[length - 1];
 }

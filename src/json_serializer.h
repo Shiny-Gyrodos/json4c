@@ -26,4 +26,7 @@ JsonNode* json_string(char*);
 void json_write(JsonNode* jnode, JsonWriteOption option, char* buffer, ptrdiff_t length);
 void json_writeFile(JsonNode* jnode, JsonWriteOption option, char* path, char* mode);
 
+int json_charLength(JsonNode*, JsonWriteOption);
+char* json_toString(JsonNode*, JsonWriteOption);
+
 #endif // JSON4C_SERIALIZER

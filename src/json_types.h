@@ -56,6 +56,8 @@ typedef struct JsonNode {
 #define IS_STRING(jnode)	(!(jnode) && (jnode)->value.type == JSON_STRING)
 #define IS_ARRAY(jnode)		(!(jnode) && (jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	(!(jnode) && (jnode)->value.type == JSON_OBJECT)
+#define IS_ERROR(jnode)		(!(jnode) && (jnode)->value.type == JSON_ERROR)
+#define IS_INVALID(jnode)	(!(jnode) && (jnode)->value.type == JSON_INVALID)
 
 bool json_type_isComplex(JsonType);
 
