@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < changes->value.jcomplex.count; i++) {
 		json_property(background, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
 	}
+	json_writeFile(background, argv[1], "w"); // Update the file.
 	return 0;
 }
 ~~~
@@ -146,6 +147,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
