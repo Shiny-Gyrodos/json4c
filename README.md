@@ -57,6 +57,8 @@ JsonNode* json_get(JsonNode* node, int argCount, ...);
 
 #### Usage
 
+A program that updates JSON files:
+
 ~~~c
 #include <stdio.h>
 #include "json4c/json.h"
@@ -77,8 +79,6 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 ~~~
-
-This program could be compiled as `update_json` and run as `update_json data/background.json "{ \"color\": \"black\" }"`.
 
 ### Serialization
 
@@ -156,6 +156,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
