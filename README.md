@@ -1,70 +1,71 @@
 ﻿JSON4C
 ======
 
-**WARNING**: This project is undergoing massive changes, expect incorrect / missing behaviour, and breaking changes regularly until a stable build is released.
+**WARNING**: This project is undergoing massive changes, expect incorrect or missing behaviour, and breaking changes regularly until a stable build is released.
 
 A simple, flexible JSON library written in pure C.
 
 ## Building
 
-JSON4C is a unity build for ease of use. The only files you need to worry about are `json.h` and `json.c`, the rest exist only for code orginization.
+JSON4C is a unity build for ease of use. The only files you need to worry about are `json.h` and `json.c`, the rest exist only for orginization purposes.
 
 1. Copy `src` to your project.
-2. Rename `src` to something like `json4c`
+2. Rename `src` to something like `json4c`.
 3. `#include "json4c\json.h"` when you want to use the library.
 4. Add `json4c\json.c` to your compilation process.
 
 ## Examples
 
-### Deserialization
+### Parsing
 
-#### Using 'json_property'
+There are two functions provided for parsing JSON, `json_parse` and `json_parseFile`, below are their signatures.
 
 ~~~c
-#include <stdio.h>
-
-#include "json.h"
-
-int main(void) {
-	// Parse the file and print the "age" property
-	JsonNode* person = json_parseFile("data\\person.json");
-	JsonNode* age = json_property(person, "age");
-	printf("age = %d\n", AS_INT(age)); // Would print the age property.
-	json_node_free(person);
-	return 0;
-}
+JsonNode* json_parse(char* buffer, ptrdiff_t length);
+JsonNode* json_parseFile(char* path);
 ~~~
 
-#### Using 'json_index'
+To extract data from a JsonNode* the library provides three functions, and some helper macros for type checking and casting.
 
 ~~~c
-#include <stdio.h>
+JsonNode* json_property(JsonNode* node, char* propertyName);
+JsonNode* json_index(JsonNode* node, int index);
+/*
+	json_get is a combination of the other two functions,
+	the call json_get(node, 2, "friends", 0) roughly translates
+	to json_index(json_property(node, "friends"), 0). In other
+	words, json_get allows you to traverse the JSON tree in one go.
+*/
+JsonNode* json_get(JsonNode* node, int argCount, ...);
 
-#include "json.h"
-
-int main(void) {
-	// Parse the file and print the number at the 3rd index.
-	JsonNode* numberArray = json_parseFile("data\\numbers.json");
-	JsonNode* number = json_index(numbers, 3);
-	printf("number = %d\n", AS_INT(number)); // Would print the number at the 3rd index.
-	json_node_free(numbers);
-	return 0;
-}
+/*
+	The helper macros are:
+	IS_INT(node)	AS_INT(node)
+	IS_REAL(node)	AS_REAL(node)
+	IS_STRING(node)	AS_STRING(node)
+	IS_BOOL(node) 	AS_BOOL(node)
+	IS_NULL(node) 	AS_NULL(node)
+	IS_ARRAY(node) 	AS_ARRAY(node)
+	IS_OBJECT(node) AS_OBJECT(node)
+*/
 ~~~
 
-#### Using 'json_get' to traverse the tree.
+#### Usage
 
 ~~~c
 #include <stdio.h>
+#include "json4c/json.h"
 
-#include "json.h"
-
-int main(void) {
-	// Parse the file and traverse the tree.
-	JsonNode* subscribers = json_parseFile("data\\subscribers.json");
-	JsonNode* email = json_get(subscribers, 2, 6, "email"); // The first number denotes the amount of following arguments.
-	printf("email = %s\n", AS_STRING(email)); // Would print the 6th person's email property.
-	json_node_free(subscribers);
+// This example parses two JSON nodes, and updates 'background' with the changes in 'changes'.
+int main(int argc, char* argv[]) {
+	if (argc < 2) return 1;
+	JsonNode* background = json_parseFile(argv[1]); // { "color": "grey", "opacity": 0.95 }
+	JsonNode* changes = json_parse(argv[2], strlen(argv[2]); // { "color": "black" }
+	if (IS_ERROR(background) || IS_ERROR(changes)) return 1;
+	// NOTE: a foreach function is in works
+	for (int i = 0; i < changes->value.jcomplex.count; i++) {
+		json_property(background, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
+	}
 	return 0;
 }
 ~~~
@@ -73,11 +74,11 @@ int main(void) {
 
 ~~~c
 #include <stdio.h>
-
-#include "json.h"
+#include "json4c/json.h"
 
 int main(void) {
 	/*
+		The file created:
 		{
 			"test_status": "passing",
 			"tests_passed": 123,
@@ -103,8 +104,8 @@ int main(void) {
 		),
 		"test_history", json_emptyArray()
 	);
-	// The "" indicates the amount of indentation you want to start with.
-	json_write("data\\test.json", rootObject, "");
+	// the last argument is for the write option, it is passed into fopen()
+	json_writeFile("data/test.json", rootObject, "w");
 	json_node_free(rootObject);
 	return 0;
 }
@@ -145,6 +146,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
