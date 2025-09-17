@@ -3,6 +3,10 @@
 
 **WARNING**: This project is undergoing massive changes, expect incorrect or missing behaviour, and breaking changes regularly until a stable build is released.
 
+**NOTE**: The serialization api is being reworked, expect regular breaking changes.
+
+**NOTE**: The parser isn't yet compliant to the JSON standard in the way it parses numbers and strings. This is being worked on, but for most use cases it works as intended.
+
 A simple, flexible JSON library written in pure C.
 
 ## Building
@@ -152,6 +156,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
