@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
 ~~~
 
 This program could be compiled as `update_json` and run as `update_json data/background.json "{ \"color\": \"black\" }"`.
+Obviously this is a contrived example, and can be easily accomplished without the library.
 
 ### Serialization
 
@@ -152,6 +153,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
