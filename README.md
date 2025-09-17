@@ -47,6 +47,7 @@ JsonNode* json_get(JsonNode* node, int argCount, ...);
 	IS_NULL(node) 	AS_NULL(node)
 	IS_ARRAY(node) 	AS_ARRAY(node)
 	IS_OBJECT(node) AS_OBJECT(node)
+	IS_ERROR(node) 	AS_ERROR(node)
 */
 ~~~
 
@@ -59,19 +60,21 @@ JsonNode* json_get(JsonNode* node, int argCount, ...);
 // This example parses two JSON nodes, and updates 'background' with the changes in 'changes'.
 int main(int argc, char* argv[]) {
 	if (argc < 2) return 1;
-	JsonNode* background = json_parseFile(argv[1]); // { "color": "grey", "opacity": 0.95 }
+	JsonNode* file = json_parseFile(argv[1]); // { "color": "grey", "opacity": 0.95 }
 	JsonNode* changes = json_parse(argv[2], strlen(argv[2]); // { "color": "black" }
-	if (IS_ERROR(background) || IS_ERROR(changes)) return 1;
+	if (IS_ERROR(file) || IS_ERROR(changes)) return 1;
 	// NOTE: a foreach function is in works
 	for (int i = 0; i < changes->value.jcomplex.count; i++) {
-		json_property(background, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
+		json_property(file, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
 	}
-	json_writeFile(background, argv[1], "w"); // Update the file.
-	json_node_free(background);
+	json_writeFile(file, argv[1], "w"); // Update the file.
+	json_node_free(file);
 	json_node_free(changes);
 	return 0;
 }
 ~~~
+
+This program could be compiled as `update_json` and run as `update_json data/background.json "{ \"color\": \"black\" }"`.
 
 ### Serialization
 
@@ -149,6 +152,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
