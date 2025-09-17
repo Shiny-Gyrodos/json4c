@@ -68,7 +68,11 @@ int main(int argc, char* argv[]) {
 	if (argc < 2) return 1;
 	JsonNode* file = json_parseFile(argv[1]); // { "color": "grey", "opacity": 0.95 }
 	JsonNode* changes = json_parse(argv[2], strlen(argv[2]); // { "color": "black" }
-	if (IS_ERROR(file) || IS_ERROR(changes)) return 1;
+	if (IS_ERROR(file) || IS_ERROR(changes)) {
+		json_node_free(file);
+		json_node_free(changes);
+		return 1;
+	}
 	// NOTE: a foreach function is in works
 	for (int i = 0; i < changes->value.jcomplex.count; i++) {
 		json_property(file, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
@@ -156,6 +160,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
