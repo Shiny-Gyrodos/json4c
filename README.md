@@ -51,7 +51,7 @@ JsonNode* json_get(JsonNode* node, int argCount, ...);
 	IS_NULL(node) 	AS_NULL(node)
 	IS_ARRAY(node) 	AS_ARRAY(node)
 	IS_OBJECT(node) AS_OBJECT(node)
-	IS_ERROR(node) 	AS_ERROR(node)
+	IS_ERROR(node) 	
 */
 ~~~
 
