@@ -6,7 +6,9 @@
 static void* _std_alloc(ptrdiff_t, void*);
 static void _std_free(void*, ptrdiff_t, void*);
 static void* _std_realloc(void*, ptrdiff_t, ptrdiff_t, void*);
+
 static void* _backupRealloc(void*, ptrdiff_t, ptrdiff_t, void*);
+static void _dummyFree(void*, ptrdiff_t, void*);
 
 
 struct Allocator json_allocator = (struct Allocator){_std_alloc, _std_free, _std_realloc, NULL};
@@ -21,6 +23,9 @@ void json_allocator_set(
 	json_allocator = (struct Allocator){custom_alloc, custom_free, custom_realloc, context};
 	if (!json_allocator.realloc) {
 		json_allocator.realloc = _backupRealloc;
+	}
+	if (!json_allocator.free) {
+		json_allocator.free = _dummyFree;
 	}
 }
 
@@ -51,4 +56,10 @@ static void* _backupRealloc(void* ptr, ptrdiff_t newSize, ptrdiff_t oldSize, voi
 	memcpy(newptr, ptr, oldSize);
 	json_allocator.free(ptr, oldSize, context);
 	return newptr;
+}
+
+static void _dummyFree(void* ptr, ptrdiff_t size, void* context) {
+	(void)ptr;
+	(void)size;
+	(void)context;
 }
