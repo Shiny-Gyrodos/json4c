@@ -115,7 +115,7 @@ static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 
 // NOTE: a parser returning NULL means an unimportant character was parsed, a parser that fails returns JSON_ERROR
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("( %c ) skipped", json_buf_get(buffer, length, offset);
+	DEBUG("( %c ) skipped", json_buf_get(buffer, length, offset));
 	return NULL;
 }
 
