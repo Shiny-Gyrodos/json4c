@@ -109,22 +109,17 @@ static bool _letterPredicate(char c) { return isalpha(c); }
 static bool _errorPredicate(char c) { return _getParser(c) == _error; }
 
 static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _error");
 	char* string = _scanWhile(_errorPredicate, buffer, length, offset);
-	DEBUG("exited _error");
 	return json_node_create("JSON_ERROR: unexpected character(s)", (JsonValue){JSON_ERROR, .string = string});
 }
 
 // NOTE: a parser returning NULL means an unimportant character was parsed, a parser that fails returns JSON_ERROR
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _skip");
-	json_buf_get(buffer, length, offset);
-	DEBUG("exited _skip");
+	DEBUG("( %c ) skipped", json_buf_get(buffer, length, offset);
 	return NULL;
 }
 
 static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _object");
 	if (!json_buf_expect('{', buffer, length, offset)) 
 		return json_node_create("JSON_ERROR: ( { ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	DEBUG("( { ) parsed");
@@ -135,12 +130,10 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
-			DEBUG("_object continued");
 			continue;
 		} else if (appendee->value.type == JSON_ERROR) { // TODO: this is wasteful, FIX
 			json_node_free(jobject);
 			DEBUG("parser returned JSON_ERROR, bailing out");
-			DEBUG("exited _object");
 			return appendee;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			identifier = appendee->value.string;
@@ -153,16 +146,13 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!json_buf_expect('}', buffer, length, offset)) {
 		json_node_free(jobject);
 		DEBUG("( } ) missing");
-		DEBUG("exited _object");
 		return json_node_create("JSON_ERROR: ( } ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	}
 	DEBUG("( } ) parsed");
-	DEBUG("exited _object");
 	return jobject;
 }
 
 static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _array");
 	if (!json_buf_expect('[', buffer, length, offset))
 		json_node_create("JSON_ERROR: ( [ ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	DEBUG("( [ ) parsed");
@@ -172,28 +162,23 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		parserFunc currentParser = _getParser(nextChar);
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
-			DEBUG("_array continued");
 			continue;
 		} else if (appendee->value.type == JSON_ERROR) {
 			json_node_free(jarray);
 			DEBUG("parser returned JSON_ERROR, bailing out");
-			DEBUG("exited _array");
 			return appendee; // TODO: better error reporting
 		}
 		json_node_append(jarray, appendee);
 	}
 	if (!json_buf_expect(']', buffer, length, offset)) {
 		json_node_free(jarray);
-		DEBUG("exited _array");
 		return json_node_create("JSON_ERROR: ( ] ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	}
 	DEBUG("( ] ) parsed");
-	DEBUG("exited _array");
 	return jarray;
 }
 
 static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _boolean");
 	char* boolString = _scanWhile(_letterPredicate, buffer, length, offset);
 	JsonNode* jnode;
 	if (strcmp(boolString, "true") == 0) {
@@ -207,25 +192,21 @@ static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	} else {
 		jnode = json_node_create("JSON_ERROR: unexpected character(s)", (JsonValue){JSON_ERROR, .string = boolString});
 	}
-	DEBUG("exited _boolean");
 	return jnode;
 }
 
 static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _string");
 	json_buf_get(buffer, length, offset); // Not json_bufexpect because at this point we know it's '"'
 	char* string = _scanUntil("\"", buffer, length, offset);
 	DEBUG("( \"%s\" ) parsed", string);
 	if (!string)
 		return json_node_create("JSON_ERROR: out of memory", (JsonValue){JSON_ERROR, .string = NULL});
 	json_buf_get(buffer, length, offset);
-	DEBUG("exited _string");
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
 // TODO: _number isn't compliant with the JSON standard
 static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _number");
 	char* numString = _scanWhile(_numberPredicate, buffer, length, offset);
 	if (!numString)
 		return json_node_create("JSON_ERROR: out of memory", (JsonValue){JSON_ERROR, .string = NULL});
@@ -236,16 +217,13 @@ static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	json_allocator.free(numString, strlen(numString), json_allocator.context);
 	if (modf(real, &integer) == 0.0) {
 		DEBUG("( %d ) parsed", (int)integer);
-		DEBUG("exited _number");
 		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int64_t)integer});
 	}
 	DEBUG("( %lf ) parsed", real);
-	DEBUG("exited _number");
 	return json_node_create(NULL, (JsonValue){JSON_REAL, .real = real});
 }
 
 static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("entered _null");
 	char* nullString = _scanWhile(_letterPredicate, buffer, length, offset);
 	if (!nullString)
 		return json_node_create("JSON_ERROR: out of memory", (JsonValue){JSON_ERROR, .string = NULL});
@@ -255,7 +233,6 @@ static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		jnode = json_node_create(NULL, (JsonValue){JSON_NULL, {0}});
 	}
 	json_allocator.free(nullString, strlen(nullString), json_allocator.context);
-	DEBUG("exited _null");
 	return jnode;
 }
 
