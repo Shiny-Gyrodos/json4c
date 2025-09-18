@@ -8,14 +8,14 @@
 #define DEBUG(msg) // Compile to nothing
 #endif
 
+#ifndef JSON_BUFFER_DEFAULT
+#define JSON_BUFFER_DEFAULT 256
+#endif
 #ifndef JSON_COMPLEX_CAPACITY
 #define JSON_COMPLEX_CAPACITY 16
 #endif
 #ifndef JSON_COMPLEX_GROW_MULTIPLIER
 #define JSON_COMPLEX_GROW_MULTIPLIER 2
-#endif
-#ifndef JSON_ALLOCATOR_DEFAULT
-#define JSON_ALLOCATOR_DEFAULT (struct Allocator){json_std_alloc, json_std_free, json_std_realloc, NULL}
 #endif
 
 #endif // JSON4C_CONFIG

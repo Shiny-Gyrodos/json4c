@@ -4,18 +4,16 @@
 #include <math.h>
 #include <inttypes.h>
 
+#include "json_config.h"
 #include "json_serializer.h"
 #include "json_allocator.h"
 #include "json_utils.h"
 
-typedef char* serializer(JsonNode*, char*, ptrdiff_t, ptrdiff_t*);
-
-static void _toString(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
-static void _serialize(FILE*, JsonNode*, char*, char*);
+static void _serialize(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
 
 
 JsonNode* json_object_impl(void** ptrs) {
-	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
+	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, {0}});
 	int i;
 	char* identifier = NULL;
 	for (i = 0; ptrs[i]; i++) {
@@ -39,7 +37,7 @@ JsonNode* json_object_impl(void** ptrs) {
 }
 
 JsonNode* json_array_impl(JsonNode** jnodes) {
-	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, 0});
+	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, {0}});
 	int i;
 	for (i = 0; jnodes[i]; i++) {
 		json_node_append(jarray, jnodes[i]);
@@ -60,7 +58,7 @@ inline JsonNode* json_real(double real) {
 }
 
 inline JsonNode* json_null(void) {
-	return json_node_create(NULL, (JsonValue){JSON_NULL, 0});
+	return json_node_create(NULL, (JsonValue){JSON_NULL, {0}});
 }
 
 inline JsonNode* json_string(char* string) {
@@ -90,13 +88,13 @@ void json_writeFile(JsonNode* node, char* path, char* mode) {
 
 char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset) {
 	char* buffer = json_allocator.alloc(*length, json_allocator.context);
-	_toString(node, &buffer, length, offset);
+	_serialize(node, &buffer, length, offset);
 	return buffer;
 }
 
 char* json_toString(JsonNode* node) {
 	// TODO: replace numeric literal with macro
-	ptrdiff_t length = 1024;
+	ptrdiff_t length = JSON_BUFFER_DEFAULT;
 	ptrdiff_t offset = 0;
 	char* buffer = json_toBuffer(node, &length, &offset);
 	if (offset >= length) {
@@ -114,11 +112,11 @@ char* json_toString(JsonNode* node) {
 
 // TODO: functions needs some spring cleaning, and thourough testing.
 // TODO: add support for pretty printing ( ' ', '\t', and '\n')
-static void _toString(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset) {
+static void _serialize(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset) {
 	switch (node->value.type) {
 		case JSON_OBJECT:
 			json_utils_dynAppendStr(buffer, length, offset, "{");
-			for (int i = 0; i < node->value.jcomplex.count; i++) {
+			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
 				json_utils_dynAppendStr(
 					buffer, 
 					length, 
@@ -127,7 +125,7 @@ static void _toString(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_
 					node->value.jcomplex.nodes[i]->identifier,
 					"\":"
 				);
-				_toString(node->value.jcomplex.nodes[i], buffer, length, offset);
+				_serialize(node->value.jcomplex.nodes[i], buffer, length, offset);
 				if (i + 1 < node->value.jcomplex.count) {
 					json_utils_dynAppendStr(buffer, length, offset, ",");
 				}
@@ -136,8 +134,8 @@ static void _toString(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_
 			break;
 		case JSON_ARRAY:
 			json_utils_dynAppendStr(buffer, length, offset, "[");
-			for (int i = 0; i < node->value.jcomplex.count; i++) {
-				_toString(node->value.jcomplex.nodes[i], buffer, length, offset);
+			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+				_serialize(node->value.jcomplex.nodes[i], buffer, length, offset);
 				if (i + 1 < node->value.jcomplex.count) {
 					json_utils_dynAppendStr(buffer, length, offset, ",");
 				}
@@ -171,7 +169,7 @@ static void _toString(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_
 			// but will only sometimes have extra data in node->value.string
 			json_utils_dynAppendStr(buffer, length, offset, node->identifier, node->value.string);
 			break;
-		default: // JSON_INVALID or some number casted to JsonType
+		default: // for numbers casted to JsonType
 			break;
 	}
 }

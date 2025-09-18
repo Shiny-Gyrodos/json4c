@@ -12,7 +12,6 @@
 #include "json_allocator.h"
 
 typedef enum {
-	JSON_INVALID,
 	JSON_ERROR,
 	JSON_OBJECT,
 	JSON_ARRAY,
@@ -58,7 +57,6 @@ typedef struct JsonNode {
 #define IS_ARRAY(jnode)		(!(jnode) && (jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	(!(jnode) && (jnode)->value.type == JSON_OBJECT)
 #define IS_ERROR(jnode)		(!(jnode) && (jnode)->value.type == JSON_ERROR)
-#define IS_INVALID(jnode)	(!(jnode) && (jnode)->value.type == JSON_INVALID)
 
 bool json_type_isComplex(JsonType);
 

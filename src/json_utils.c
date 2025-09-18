@@ -45,7 +45,7 @@ inline char json_buf_put(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offs
 
 // TODO: what if '\0' is just part of the string?
 inline bool json_buf_putstr(char* string, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	if (*offset + strlen(string) >= length) return false;
+	if (*offset + (ptrdiff_t)strlen(string) >= length) return false;
 	for (int i = 0; string[i] != '\0' && json_buf_put(string[i], buffer, length, offset); i++);
 	return true;
 }

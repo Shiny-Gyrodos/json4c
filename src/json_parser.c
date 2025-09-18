@@ -30,10 +30,6 @@ static parser _null;
 
 // Helpers
 static parserFunc _getParser(char character);
-static bool json_bufexpect(char, char*, ptrdiff_t, ptrdiff_t*);
-static char json_bufget(char*, ptrdiff_t, ptrdiff_t*);
-static char json_bufput(char, char*, ptrdiff_t, ptrdiff_t*);
-static char json_bufpeek(char*, ptrdiff_t, ptrdiff_t);
 static char* _scanUntil(char*, char*, ptrdiff_t, ptrdiff_t*);
 static char* _scanWhile(bool (*predicate)(char), char*, ptrdiff_t, ptrdiff_t*);
 
@@ -68,7 +64,7 @@ JsonNode* json_parseFile(char* path) {
 
 JsonNode* json_property(JsonNode* jnode, char* identifier) {
 	if (!jnode || !identifier || jnode->value.type != JSON_OBJECT) return NULL;
-	int i;
+	size_t i;
 	for (i = 0; i < jnode->value.jcomplex.count; i++) {
 		if (strcmp(jnode->value.jcomplex.nodes[i]->identifier, identifier) == 0) {
 			return jnode->value.jcomplex.nodes[i];
@@ -77,8 +73,8 @@ JsonNode* json_property(JsonNode* jnode, char* identifier) {
 	return NULL;
 }
 
-JsonNode* json_index(JsonNode* jnode, int index) {
-	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count || index < 0) 
+JsonNode* json_index(JsonNode* jnode, size_t index) {
+	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count) 
 		return NULL;
 	return jnode->value.jcomplex.nodes[index];
 }
@@ -132,7 +128,7 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!json_buf_expect('{', buffer, length, offset)) 
 		return json_node_create("JSON_ERROR: ( { ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	DEBUG("( { ) parsed");
-	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, 0});
+	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, {0}});
 	char* identifier = NULL;
 	char nextChar;
 	while ((nextChar = json_buf_peek(buffer, length, *offset)) != '}' && *offset < length) {
@@ -170,7 +166,7 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!json_buf_expect('[', buffer, length, offset))
 		json_node_create("JSON_ERROR: ( [ ) missing", (JsonValue){JSON_ERROR, .string = NULL});
 	DEBUG("( [ ) parsed");
-	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, 0});
+	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, {0}});
 	char nextChar;
 	while ((nextChar = json_buf_peek(buffer, length, *offset)) != ']' && *offset < length) {
 		parserFunc currentParser = _getParser(nextChar);
@@ -256,7 +252,7 @@ static JsonNode* _null(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	JsonNode* jnode = NULL;
 	if (strcmp(nullString, "null") == 0) {
 		DEBUG("( null ) parsed");
-		jnode = json_node_create(NULL, (JsonValue){JSON_NULL, 0});
+		jnode = json_node_create(NULL, (JsonValue){JSON_NULL, {0}});
 	}
 	json_allocator.free(nullString, strlen(nullString), json_allocator.context);
 	DEBUG("exited _null");
