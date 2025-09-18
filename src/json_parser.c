@@ -241,7 +241,7 @@ static JsonNode* _number(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (modf(real, &integer) == 0.0) {
 		DEBUG("( %d ) parsed", (int)integer);
 		DEBUG("exited _number");
-		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int)integer});
+		return json_node_create(NULL, (JsonValue){JSON_INT, .integer = (int64_t)integer});
 	}
 	DEBUG("( %lf ) parsed", real);
 	DEBUG("exited _number");

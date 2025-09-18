@@ -2,10 +2,15 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <math.h>
+#include <inttypes.h>
 
 #include "json_serializer.h"
 #include "json_allocator.h"
+#include "json_utils.h"
 
+typedef char* serializer(JsonNode*, char*, ptrdiff_t, ptrdiff_t*);
+
+static void _toString(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
 static void _serialize(FILE*, JsonNode*, char*, char*);
 
 
@@ -63,75 +68,110 @@ inline JsonNode* json_string(char* string) {
 }
 
 
-void json_write(JsonNode* node, JsonWriteOption option, char* buffer, ptrdiff_t length) {
-	
+void json_write(JsonNode* node, char* buffer, ptrdiff_t length) {
+	ptrdiff_t jsonLength = length;
+	ptrdiff_t jsonOffset = 0;
+	char* jsonBuffer = json_toBuffer(node, &jsonLength, &jsonOffset);
+	if (jsonLength > length) {
+		// TODO: report error
+		json_allocator.free(jsonBuffer, jsonLength, json_allocator.free);
+		return;
+	}
+	memcpy(buffer, jsonBuffer, jsonLength);
 }
 
-void json_writeFile(JsonNode* node, JsonWriteOption option, char* path, char* mode) {
+void json_writeFile(JsonNode* node, char* path, char* mode) {
 	FILE* stream = fopen(path, mode);
-	_serialize(stream, node, "", "");
+	char* jsonText = json_toString(node);
+	fputs(jsonText, stream);
 	fclose(stream);
 }
 
 
-int json_charLength(JsonNode* node, JsonWriteOption option) {
-
+char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset) {
+	char* buffer = json_allocator.alloc(*length, json_allocator.context);
+	_toString(node, &buffer, length, offset);
+	return buffer;
 }
 
-char* json_toString(JsonNode* node, JsonWriteOption option) {
-
+char* json_toString(JsonNode* node) {
+	// TODO: replace numeric literal with macro
+	ptrdiff_t length = 1024;
+	ptrdiff_t offset = 0;
+	char* buffer = json_toBuffer(node, &length, &offset);
+	if (offset >= length) {
+		void* temp = json_allocator.realloc(buffer, length + 1, length, json_allocator.context);
+		if (!temp) {
+			json_allocator.free(buffer, length, json_allocator.context);
+			return NULL;
+		}
+		buffer = temp;
+	}
+	buffer[offset++] = '\0';
+	return buffer;
 }
 
 
-// TODO: needs a serious refactor
-static void _serialize(FILE* jsonFile, JsonNode* jnode, char* indent, char* extra) {
-	if (!jsonFile || !jnode) return;
-	if (!indent) {
-		indent = "\t";
-	}
-	char* firstIndent = indent;
-	if (jnode->identifier) {
-		firstIndent = "";
-		fprintf(jsonFile, "%s\"%s\": ", indent, jnode->identifier);
-	}
-	switch (jnode->value.type) {
+// TODO: functions needs some spring cleaning, and thourough testing.
+// TODO: add support for pretty printing ( ' ', '\t', and '\n')
+static void _toString(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset) {
+	switch (node->value.type) {
 		case JSON_OBJECT:
-		case JSON_ARRAY: {
-			// For both '{' and '[', adding two ('{' + 2) gives their closing counterpart.
-			char open = jnode->value.type == JSON_OBJECT ? '{' : '[';
-			char close = open + 2;
-			fprintf(jsonFile, "%s%c\n", firstIndent, open);
-			int i;
-			for (i = 0; i < jnode->value.jcomplex.count; i++) {
-				char* newIndent = json_allocator.alloc(strlen(indent) + 1, json_allocator.context);
-				sprintf(newIndent, "%s\t", indent);
-				_serialize(
-					jsonFile, 
-					jnode->value.jcomplex.nodes[i], 
-					newIndent, 
-					jnode->value.jcomplex.nodes[i + 1] == NULL ? "\n" : ",\n"
+			json_utils_dynAppendStr(buffer, length, offset, "{");
+			for (int i = 0; i < node->value.jcomplex.count; i++) {
+				json_utils_dynAppendStr(
+					buffer, 
+					length, 
+					offset,
+					"\"",
+					node->value.jcomplex.nodes[i]->identifier,
+					"\":"
 				);
-				json_allocator.free(newIndent, strlen(newIndent), json_allocator.context);
+				_toString(node->value.jcomplex.nodes[i], buffer, length, offset);
+				if (i + 1 < node->value.jcomplex.count) {
+					json_utils_dynAppendStr(buffer, length, offset, ",");
+				}
 			}
-			fprintf(jsonFile, "%s%c%s", indent, close, extra);
+			json_utils_dynAppendStr(buffer, length, offset, "}");
+			break;
+		case JSON_ARRAY:
+			json_utils_dynAppendStr(buffer, length, offset, "[");
+			for (int i = 0; i < node->value.jcomplex.count; i++) {
+				_toString(node->value.jcomplex.nodes[i], buffer, length, offset);
+				if (i + 1 < node->value.jcomplex.count) {
+					json_utils_dynAppendStr(buffer, length, offset, ",");
+				}
+			}
+			json_utils_dynAppendStr(buffer, length, offset, "]");
+			break;
+		case JSON_INT: {
+			char tempBuffer[21]; // 20 characters is exactly enough to hold int64_t min-value
+			sprintf(tempBuffer, "%" PRId64, node->value.integer);
+			json_utils_dynAppendStr(buffer, length, offset, tempBuffer);
 			break;
 		}
-		case JSON_BOOL:
-			fprintf(jsonFile, "%s%s%s", firstIndent, AS_BOOL(jnode) ? "true" : "false", extra);
+		case JSON_REAL: {
+			// TODO: implement
+			char tempBuffer[25]; // 24 characters is enough to hold a %g formatted double
+			sprintf(tempBuffer, "%g", node->value.real);
+			json_utils_dynAppendStr(buffer, length, offset, tempBuffer);
 			break;
+		}
 		case JSON_STRING:
-			fprintf(jsonFile, "%s\"%s\"%s", firstIndent, AS_STRING(jnode), extra);
+			json_utils_dynAppendStr(buffer, length, offset, "\"", node->value.string, "\"");
+			break;
+		case JSON_BOOL:
+			json_utils_dynAppendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
 			break;
 		case JSON_NULL:
-			fprintf(jsonFile, "%snull%s", firstIndent, extra);
+			json_utils_dynAppendStr(buffer, length, offset, "null");
 			break;
-		case JSON_INT:
-			fprintf(jsonFile, "%s%d%s", firstIndent, AS_INT(jnode), extra);
+		case JSON_ERROR: 
+			// NOTE: a JSON_ERROR typed node will always have an error message in the identifier
+			// but will only sometimes have extra data in node->value.string
+			json_utils_dynAppendStr(buffer, length, offset, node->identifier, node->value.string);
 			break;
-		case JSON_REAL:
-			fprintf(jsonFile, "%s%f%s", firstIndent, AS_REAL(jnode), extra);
-			break;
-		default:
+		default: // JSON_INVALID or some number casted to JsonType
 			break;
 	}
 }

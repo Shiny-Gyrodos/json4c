@@ -7,6 +7,7 @@
 #define JSON4C_TYPES
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "json_allocator.h"
 
@@ -25,7 +26,7 @@ typedef enum {
 typedef struct JsonValue {
 	JsonType type;
 	union {
-		int integer;
+		int64_t integer;
 		double real;
 		bool boolean;
 		char* string;
