@@ -29,18 +29,18 @@ JsonNode* json_parse(char* buffer, ptrdiff_t length);
 JsonNode* json_parseFile(char* path);
 ~~~
 
-To extract data from a JsonNode* the library provides three functions, and some helper macros for type checking and casting.
+To extract data from a `JsonNode*` the library provides three functions, and some helper macros for type checking and casting.
 
 ~~~c
 JsonNode* json_property(JsonNode* node, char* propertyName);
 JsonNode* json_index(JsonNode* node, int index);
 /*
 	json_get is a combination of the other two functions,
-	the call json_get(node, 2, "friends", 0) roughly translates
+	the call json_get(node, "friends", 0) roughly translates
 	to json_index(json_property(node, "friends"), 0). In other
 	words, json_get allows you to traverse the JSON tree in one go.
 */
-JsonNode* json_get(JsonNode* node, int argCount, ...);
+JsonNode* json_get(JsonNode* node, ...);
 
 /*
 	The helper macros are:
@@ -126,36 +126,44 @@ int main(void) {
 }
 ~~~
 
-## Compilation Flags
-
-Use `-D JSON_DEBUG` to print parsing info to stdout.
-
 ## Customization
 
 ### Macros
 
-When including json.h you may define some macros for customization, below are all the options listed with their default values.
+Below are all some of the macros the library uses that can be overidden by the user to suite their own needs.
 
 ~~~c
 #define JSON_DEBUG // If you don't want to use a compilation flag
 #define JSON_COMPLEX_DEFAULT_CAPACITY 16 // The default capacity of the dynamic array.
 #define JSON_COMPLEX_GROW_MULTIPLIER 2 // How much the dynamic array grows by
-#define JSON_ALLOCATOR_DEFAULT (struct Allocator){json_std_alloc, json_std_free, json_std_realloc, NULL}
-#include "json.h"
 ~~~
+
+Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_COMPLEX_GROW_MULTIPLIER=4`. NOTE: More customization macros are in the works!
 
 ### Custom Allocators
 
-If you don't want to set the custom allocators with preprocessor macros, you can instead use the json_setAllocator function.
+If you want the library to use a custom allocator, you can use the `json_setAllocator` function.
 
 ~~~c
 #include "json.h"
 #include "your_allocator.h"
 
+/*
+	NOTE: 
+	To support all kinds of custom allocators, the signatures for the
+	allocator functions differ from you might expect. They are as follows:
+	
+	void* (*custom_alloc)(size_t size, void* instanceptr);
+	void (*custom_free)(void* ptr, size_t size, void* instanceptr);
+	void* (*custom_realloc)(void* ptr, size_t newSize, size_t oldSize, void* instanceptr);
+*/
+
 int main(void) {
-	json_setAllocator(your_allocator_alloc, your_allocator_free, your_allocator_realloc, your_allocator_instance);
-	JsonNode* jnode = json_parseFile("data\\foo.json"); // Allocated with allocator_alloc
-	json_node_free(jnode); // Freed with allocator_free
+	// NOTE: All arguments to json_setAllocator can be NULL except custom_alloc,
+	// it is obviously recommended to supply a free function though.
+	json_setAllocator(custom_alloc, custom_free, custom_realloc, custom_instance);
+	JsonNode* jnode = json_parseFile("data\\foo.json"); // Allocated with custom_alloc
+	json_node_free(jnode); // Freed with custom_free
 	return 0;
 }
 ~~~
