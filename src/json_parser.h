@@ -11,6 +11,7 @@ JsonNode* json_parseFile(char* path);
 
 JsonNode* json_property(JsonNode*, char*);
 JsonNode* json_index(JsonNode*, size_t);
-JsonNode* json_get(JsonNode*, ptrdiff_t, ...);
+#define json_get(node, ...) json_get_impl(node, __VA_ARGS__, -1)
+JsonNode* json_get_impl(JsonNode*, ...); // NOTE: call the macro wrapper instead
 
 #endif // JSON4C_PARSER

@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <math.h.>
 #include <ctype.h>
 #include <stdio.h>
@@ -57,7 +58,7 @@ JsonNode* json_parseFile(char* path) {
 	size_t bytesRead = fread(buffer, 1, length, jsonStream);
 	fclose(jsonStream);
 	buffer[bytesRead] = '\0';
-	DEBUG("file contents:\n%s", length, buffer);
+	DEBUG("file contents:\n%s", buffer);
 	
 	return json_parse(buffer, length);
 }
@@ -79,25 +80,35 @@ JsonNode* json_index(JsonNode* jnode, size_t index) {
 	return jnode->value.jcomplex.nodes[index];
 }
 
-JsonNode* json_get(JsonNode* root, ptrdiff_t count, ...) {
+JsonNode* json_get_impl(JsonNode* root, ...) {
+	#define TERMINATOR -1
 	va_list args;
-	va_start(args, count);
-	while (count --> 0) {
+	va_start(args, root);
+	while (true) {
 		if (!root) {
 			va_end(args);
 			return NULL;
 		}
 		if (root->value.type == JSON_OBJECT) {
-			root = json_property(root, va_arg(args, char*));
+			char* identifier = va_arg(args, char*);
+			if (identifier == (char*)TERMINATOR) 
+				break;
+			root = json_property(root, identifier);
 		} else if (root->value.type == JSON_ARRAY) {
-			root = json_index(root, va_arg(args, int));
+			intptr_t index = va_arg(args, intptr_t);
+			if (index == TERMINATOR) 
+				break;
+			root = json_index(root, index);
 		} else {
+			if (va_arg(args, intptr_t) == TERMINATOR) 
+				break;
 			va_end(args);
 			return NULL;
 		}
 	}
 	va_end(args);
 	return root;
+	#undef TERMINATOR
 }
 
 
