@@ -80,8 +80,8 @@ JsonNode* json_index(JsonNode* jnode, size_t index) {
 	return jnode->value.jcomplex.nodes[index];
 }
 
+#define TERMINATOR -1
 JsonNode* json_get_impl(JsonNode* root, ...) {
-	#define TERMINATOR -1
 	va_list args;
 	va_start(args, root);
 	while (true) {
@@ -108,9 +108,8 @@ JsonNode* json_get_impl(JsonNode* root, ...) {
 	}
 	va_end(args);
 	return root;
-	#undef TERMINATOR
 }
-
+#undef TERMINATOR
 
 // Predicates
 static bool _numberPredicate(char c) { // TODO: fix bandaid fix
@@ -147,6 +146,7 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 			DEBUG("parser returned JSON_ERROR, bailing out");
 			return appendee;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
+			// TODO: fix memory leak here
 			identifier = appendee->value.string;
 		} else {
 			appendee->identifier = identifier;
