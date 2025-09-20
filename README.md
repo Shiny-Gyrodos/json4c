@@ -57,30 +57,42 @@ JsonNode* json_get(JsonNode* node, ...);
 
 #### Usage
 
-A program that updates JSON files:
+
 
 ~~~c
 #include <stdio.h>
 #include <string.h>
 #include "json4c/json.h"
 
-// This example parses two JSON nodes, and updates 'background' with the changes in 'changes'.
 int main(int argc, char* argv[]) {
-	if (argc < 3) return 1;
-	JsonNode* file = json_parseFile(argv[1]); // { "color": "grey", "opacity": 0.95 }
-	JsonNode* changes = json_parse(argv[2], strlen(argv[2])); // { "color": "black" }
-	if (IS_ERROR(file) || IS_ERROR(changes)) {
-		json_node_free(file);
-		json_node_free(changes);
-		return 1;
-	}
-	// NOTE: a foreach function is in works
-	for (int i = 0; i < changes->value.jcomplex.count; i++) {
-		json_property(file, changes->value.jcomplex.nodes[i]->identifier)->value = changes->value.jcomplex.nodes[i]->value;
-	}
-	json_writeFile(file, argv[1], "w"); // Update the file.
-	json_node_free(file);
-	json_node_free(changes);
+	if (argc < 2) return 1;
+	
+	JsonNode* person = json_parse(argv[1], strlen(argv[1])); // { "name": "Lucas", "age": 34 }
+	JsonNode* age = json_property(person, "age");
+	printf("age = %d\n", AS_INT(age)); // Outputs "age = 34"
+	
+	JsonNode* primes = json_parseFile("testdata/primes.json"); // [ 1, 3, 5, 7, 11, 13, 17, 23 ]
+	JsonNode* five = json_index(primes, 2);
+	printf("the third prime number is %d\n", AS_INT(five));
+	
+	/*
+		testdata/house.json:
+		{
+			"number": 305,
+			"price": 432000,
+			"rooms": 11,
+			"baths": 2.5,
+			"bedrooms": 3,
+			"owners": [
+				"Joshua Davison",
+				"Wendy Whitley",
+				"Carrol Gretchen"
+			]
+		}
+	*/
+	JsonNode* house = json_parseFile("testdata/house.json");
+	JsonNode* carrolGretchen = json_get(house, "owners", 2);
+	printf("the third owner of the house was %s", AS_STRING(carrolGretchen));
 	return 0;
 }
 ~~~
