@@ -5,7 +5,7 @@
 
 **NOTE**: The serialization API is still in progress, expect changes to the function signatures.
 
-A simple, flexible JSON library written in pure C.
+A simple, flexible JSON library written in pure C99.
 
 ## Building
 
@@ -183,6 +183,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
