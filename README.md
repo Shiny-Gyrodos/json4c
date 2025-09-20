@@ -150,6 +150,7 @@ Below are all some of the macros the library uses that can be overidden by the u
 #define JSON_DEBUG // If you don't want to use a compilation flag
 #define JSON_COMPLEX_DEFAULT_CAPACITY 16 // The default capacity of the dynamic array.
 #define JSON_COMPLEX_GROW_MULTIPLIER 2 // How much the dynamic array grows by
+#define JSON_BUFFER_DEFAULT 256
 ~~~
 
 Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_COMPLEX_GROW_MULTIPLIER=4`. NOTE: More customization macros are in the works!
@@ -183,6 +184,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
