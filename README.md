@@ -68,12 +68,12 @@ int main(int argc, char* argv[]) {
 	JsonNode* person = json_parse(argv[1], strlen(argv[1])); // { "name": "Lucas", "age": 34 }
 	JsonNode* age = json_property(person, "age");
 	printf("age = %d\n", AS_INT(age)); // Outputs "age = 34"
-json_node_free(person);
+    json_node_free(person);
 	
 	JsonNode* primes = json_parseFile("testdata/primes.json"); // [ 1, 3, 5, 7, 11, 13, 17, 23 ]
 	JsonNode* five = json_index(primes, 2);
 	printf("the third prime number is %d\n", AS_INT(five));
-json_node_free(primes);
+    json_node_free(primes);
 	
 	/*
 		testdata/house.json:
@@ -93,7 +93,7 @@ json_node_free(primes);
 	JsonNode* house = json_parseFile("testdata/house.json");
 	JsonNode* carrolGretchen = json_get(house, "owners", 2);
 	printf("the third owner of the house was %s", AS_STRING(carrolGretchen));
-json_node_free(house);
+    json_node_free(house);
 
 	return 0;
 }
@@ -183,6 +183,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
