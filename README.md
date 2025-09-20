@@ -1,11 +1,9 @@
 ﻿JSON4C
 ======
 
-**WARNING**: This project is undergoing massive changes, expect incorrect or missing behaviour, and breaking changes regularly until a stable build is released.
+**WARNING**: This library's parser is not yet compliant to the JSON standard in the way it parses numbers (it is too lenient) and strings (escape codes aren't handled correctly).
 
-**NOTE**: The serialization api is being reworked, expect regular breaking changes.
-
-**NOTE**: The parser isn't yet compliant to the JSON standard in the way it parses numbers and strings. This is being worked on, but for most use cases it works as intended.
+**NOTE**: The serialization API is still in progress, expect changes to the function signatures.
 
 A simple, flexible JSON library written in pure C.
 
@@ -57,7 +55,7 @@ JsonNode* json_get(JsonNode* node, ...);
 
 #### Usage
 
-
+Here is an example of the different ways you can parse JSON and fetch data from the nodes.
 
 ~~~c
 #include <stdio.h>
@@ -70,10 +68,12 @@ int main(int argc, char* argv[]) {
 	JsonNode* person = json_parse(argv[1], strlen(argv[1])); // { "name": "Lucas", "age": 34 }
 	JsonNode* age = json_property(person, "age");
 	printf("age = %d\n", AS_INT(age)); // Outputs "age = 34"
+json_node_free(person);
 	
 	JsonNode* primes = json_parseFile("testdata/primes.json"); // [ 1, 3, 5, 7, 11, 13, 17, 23 ]
 	JsonNode* five = json_index(primes, 2);
 	printf("the third prime number is %d\n", AS_INT(five));
+json_node_free(primes);
 	
 	/*
 		testdata/house.json:
@@ -93,6 +93,8 @@ int main(int argc, char* argv[]) {
 	JsonNode* house = json_parseFile("testdata/house.json");
 	JsonNode* carrolGretchen = json_get(house, "owners", 2);
 	printf("the third owner of the house was %s", AS_STRING(carrolGretchen));
+json_node_free(house);
+
 	return 0;
 }
 ~~~
@@ -181,6 +183,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
