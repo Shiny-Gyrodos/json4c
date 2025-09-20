@@ -9,7 +9,8 @@
 #include "json_allocator.h"
 #include "json_utils.h"
 
-static void _serialize(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
+static void _serializeCondensed(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
+static void _serializePretty(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*, char*, char*);
 
 
 JsonNode* json_object_impl(void** ptrs) {
@@ -66,37 +67,42 @@ inline JsonNode* json_string(char* string) {
 }
 
 
-void json_write(JsonNode* node, char* buffer, ptrdiff_t length) {
+void json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdiff_t length) {
 	ptrdiff_t jsonLength = length;
 	ptrdiff_t jsonOffset = 0;
-	char* jsonBuffer = json_toBuffer(node, &jsonLength, &jsonOffset);
+	char* jsonBuffer = json_toBuffer(node, option, &jsonLength, &jsonOffset);
 	if (jsonLength > length) {
-		// TODO: report error
+		// TODO: fix silent error
 		json_allocator.free(jsonBuffer, jsonLength, json_allocator.free);
 		return;
 	}
 	memcpy(buffer, jsonBuffer, jsonLength);
 }
 
-void json_writeFile(JsonNode* node, char* path, char* mode) {
+void json_writeFile(JsonNode* node, enum JsonWriteOption option, char* path, char* mode) {
 	FILE* stream = fopen(path, mode);
-	char* jsonText = json_toString(node);
+	char* jsonText = json_toString(node, option);
 	fputs(jsonText, stream);
 	fclose(stream);
 }
 
 
-char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset) {
+char* json_toBuffer(JsonNode* node, enum JsonWriteOption option, ptrdiff_t* length, ptrdiff_t* offset) {
 	char* buffer = json_allocator.alloc(*length, json_allocator.context);
-	_serialize(node, &buffer, length, offset);
+	if (option == JSON_WRITE_PRETTY) {
+		_serializePretty(node, &buffer, length, offset, "", "");
+	} else if (option == JSON_WRITE_CONDENSED) {
+		_serializeCondensed(node, &buffer, length, offset);
+	} else {
+		return NULL; // TODO: fix silent fail
+	}
 	return buffer;
 }
 
-char* json_toString(JsonNode* node) {
-	// TODO: replace numeric literal with macro
+char* json_toString(JsonNode* node, enum JsonWriteOption option) {
 	ptrdiff_t length = JSON_BUFFER_DEFAULT;
 	ptrdiff_t offset = 0;
-	char* buffer = json_toBuffer(node, &length, &offset);
+	char* buffer = json_toBuffer(node, option, &length, &offset);
 	if (offset >= length) {
 		void* temp = json_allocator.realloc(buffer, length + 1, length, json_allocator.context);
 		if (!temp) {
@@ -112,12 +118,13 @@ char* json_toString(JsonNode* node) {
 
 // TODO: functions needs some spring cleaning, and thourough testing.
 // TODO: add support for pretty printing ( ' ', '\t', and '\n')
-static void _serialize(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset) {
+#define appendStr(buffer, length, offset, ...) json_utils_dynAppendStr(buffer, length, offset, __VA_ARGS__)
+static void _serializeCondensed(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset) {
 	switch (node->value.type) {
 		case JSON_OBJECT:
-			json_utils_dynAppendStr(buffer, length, offset, "{");
+			appendStr(buffer, length, offset, "{");
 			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
-				json_utils_dynAppendStr(
+				appendStr(
 					buffer, 
 					length, 
 					offset,
@@ -125,51 +132,132 @@ static void _serialize(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff
 					node->value.jcomplex.nodes[i]->identifier,
 					"\":"
 				);
-				_serialize(node->value.jcomplex.nodes[i], buffer, length, offset);
+				_serializeCondensed(node->value.jcomplex.nodes[i], buffer, length, offset);
 				if (i + 1 < node->value.jcomplex.count) {
-					json_utils_dynAppendStr(buffer, length, offset, ",");
+					appendStr(buffer, length, offset, ",");
 				}
 			}
-			json_utils_dynAppendStr(buffer, length, offset, "}");
+			appendStr(buffer, length, offset, "}");
 			break;
 		case JSON_ARRAY:
-			json_utils_dynAppendStr(buffer, length, offset, "[");
+			appendStr(buffer, length, offset, "[");
 			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
-				_serialize(node->value.jcomplex.nodes[i], buffer, length, offset);
+				_serializeCondensed(node->value.jcomplex.nodes[i], buffer, length, offset);
 				if (i + 1 < node->value.jcomplex.count) {
-					json_utils_dynAppendStr(buffer, length, offset, ",");
+					appendStr(buffer, length, offset, ",");
 				}
 			}
-			json_utils_dynAppendStr(buffer, length, offset, "]");
+			appendStr(buffer, length, offset, "]");
 			break;
 		case JSON_INT: {
 			char tempBuffer[21]; // 20 characters is exactly enough to hold int64_t min-value
 			sprintf(tempBuffer, "%" PRId64, node->value.integer);
-			json_utils_dynAppendStr(buffer, length, offset, tempBuffer);
+			appendStr(buffer, length, offset, tempBuffer);
 			break;
 		}
 		case JSON_REAL: {
-			// TODO: implement
 			char tempBuffer[25]; // 24 characters is enough to hold a %g formatted double
 			sprintf(tempBuffer, "%g", node->value.real);
-			json_utils_dynAppendStr(buffer, length, offset, tempBuffer);
+			appendStr(buffer, length, offset, tempBuffer);
 			break;
 		}
 		case JSON_STRING:
-			json_utils_dynAppendStr(buffer, length, offset, "\"", node->value.string, "\"");
+			appendStr(buffer, length, offset, "\"", node->value.string, "\"");
 			break;
 		case JSON_BOOL:
-			json_utils_dynAppendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
+			appendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
 			break;
 		case JSON_NULL:
-			json_utils_dynAppendStr(buffer, length, offset, "null");
+			appendStr(buffer, length, offset, "null");
 			break;
 		case JSON_ERROR: 
 			// NOTE: a JSON_ERROR typed node will always have an error message in the identifier
 			// but will only sometimes have extra data in node->value.string
-			json_utils_dynAppendStr(buffer, length, offset, node->identifier, node->value.string);
+			appendStr(buffer, length, offset, node->identifier, node->value.string);
 			break;
 		default: // for numbers casted to JsonType
 			break;
 	}
 }
+	
+static void _serializePretty
+	(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char* indent, char* extra) {
+	switch (node->value.type) {
+		case JSON_OBJECT: {
+			appendStr(buffer, length, offset, extra, "{\n");
+			// TODO: replace slow solution
+			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
+			sprintf(newIndent, "\t%s", indent);
+			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+				appendStr(
+					buffer, 
+					length, 
+					offset,
+					newIndent,
+					"\"",
+					node->value.jcomplex.nodes[i]->identifier,
+					"\": "
+				);
+				_serializePretty(
+					node->value.jcomplex.nodes[i], 
+					buffer, 
+					length, 
+					offset, 
+					newIndent,
+					""
+				);
+				if (i + 1 < node->value.jcomplex.count) {
+					appendStr(buffer, length, offset, ",");
+				}
+				appendStr(buffer, length, offset, "\n");
+			}
+			json_allocator.free(newIndent, strlen(newIndent) + 1, json_allocator.context);
+			appendStr(buffer, length, offset, indent, "}");
+			break;
+		}
+		case JSON_ARRAY: {
+			appendStr(buffer, length, offset, extra, "[\n");
+			// TODO: replace slow solution
+			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
+			sprintf(newIndent, "\t%s", indent);
+			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+				appendStr(buffer, length, offset, newIndent);
+				_serializePretty(node->value.jcomplex.nodes[i], buffer, length, offset, newIndent, newIndent);
+				if (i + 1 < node->value.jcomplex.count) {
+					appendStr(buffer, length, offset, ",");
+				}
+				appendStr(buffer, length, offset, "\n");
+			}
+			json_allocator.free(newIndent, strlen(newIndent) + 1, json_allocator.context);
+			appendStr(buffer, length, offset, indent, "]");
+			break;
+		}
+		case JSON_INT: {
+			char tempBuffer[21];
+			sprintf(tempBuffer, "%" PRId64, node->value.integer);
+			appendStr(buffer, length, offset, tempBuffer);
+			break;
+		}
+		case JSON_REAL: {
+			char tempBuffer[25];
+			sprintf(tempBuffer, "%g", node->value.real);
+			appendStr(buffer, length, offset, tempBuffer);
+			break;
+		}
+		case JSON_STRING:
+			appendStr(buffer, length, offset, "\"", node->value.string, "\"");
+			break;
+		case JSON_BOOL:
+			appendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
+			break;
+		case JSON_NULL:
+			appendStr(buffer, length, offset, "null");
+			break;
+		case JSON_ERROR: 
+			appendStr(buffer, length, offset, node->identifier, node->value.string);
+			break;
+		default:
+			break;
+	}
+}
+#undef appendStr

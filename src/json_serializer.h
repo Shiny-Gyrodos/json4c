@@ -6,6 +6,11 @@
 
 #include "json_types.h"
 
+enum JsonWriteOption {
+	JSON_WRITE_PRETTY,
+	JSON_WRITE_CONDENSED
+};
+
 JsonNode* json_object_impl(void**); // shouldn't be called, use the macro wrapper instead
 #define json_object(...) json_object_impl((void*[]){__VA_ARGS__, NULL})
 #define json_emptyObject() jnode_create(NULL, (JsonValue){JSON_OBJECT, 0})
@@ -18,8 +23,8 @@ JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
 
-void json_write(JsonNode* jnode, char* buffer, ptrdiff_t length);
-void json_writeFile(JsonNode* jnode, char* path, char* mode);
+void json_write(JsonNode* jnode, enum JsonWriteOption option, char* buffer, ptrdiff_t length);
+void json_writeFile(JsonNode* jnode, enum JsonWriteOption, char* path, char* mode);
 
 /* 
 	NOTE:
@@ -28,7 +33,7 @@ void json_writeFile(JsonNode* jnode, char* path, char* mode);
 	and assigns *length to the buffer length and *offset to n + 1 where n is 
 	the amount of bytes in the buffer.
 */
-char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset);
-char* json_toString(JsonNode* node);
+char* json_toBuffer(JsonNode* node, enum JsonWriteOption, ptrdiff_t* length, ptrdiff_t* offset);
+char* json_toString(JsonNode* node, enum JsonWriteOption);
 
 #endif // JSON4C_SERIALIZER
