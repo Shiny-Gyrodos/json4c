@@ -153,7 +153,7 @@ Below are all some of the macros the library uses that can be overidden by the u
 #define JSON_BUFFER_CAPACITY 256
 ~~~
 
-Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_COMPLEX_GROW_MULTIPLIER=4`. NOTE: More customization macros are in the works!
+Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_DYNAMIC_ARRAY_GROW_BY=4`. NOTE: More customization macros are in the works!
 
 ### Custom Allocators
 
@@ -184,6 +184,7 @@ int main(void) {
 ~~~
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
+
 
 
 
