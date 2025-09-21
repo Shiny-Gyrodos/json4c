@@ -48,6 +48,11 @@ void json_node_free(JsonNode* jnode) {
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
 			json_node_free(jnode->value.jcomplex.nodes[i]);
 		}
+		json_allocator.free(
+			jnode->value.jcomplex.nodes, 
+			jnodes->value.jcomplex.count * sizeof(JsonNode*),
+			json_allocator.context
+		);
 	} else if (jnode->value.type == JSON_STRING) {
 		json_allocator.free(jnode->value.string, strlen(jnode->value.string), json_allocator.context);
 	}

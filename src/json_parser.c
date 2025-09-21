@@ -146,8 +146,10 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 			DEBUG("parser returned JSON_ERROR, bailing out");
 			return appendee;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
-			// TODO: fix memory leak here
-			identifier = appendee->value.string;
+			size_t stringLength = strlen(appendee->value.string);
+			identifier = json_allocator.alloc(stringLength, json_allocator.context);
+			memcpy(identifier, appendee->value.string, stringLength);
+			json_node_free(appendee);
 		} else {
 			appendee->identifier = identifier;
 			json_node_append(jobject, appendee);
