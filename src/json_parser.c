@@ -277,7 +277,7 @@ static parserFunc _getParser(char character) {
 
 char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!delimiters || !buffer || !offset) return NULL;
-	ptrdiff_t max = 16;
+	ptrdiff_t max = JSON_DYNAMIC_ARRAY_CAPACITY;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) return NULL;
@@ -298,7 +298,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 
 char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	if (!predicate || !buffer || !offset) return NULL;
-	ptrdiff_t max = 16;
+	ptrdiff_t max = JSON_DYNAMIC_ARRAY_CAPACITY;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) return NULL;

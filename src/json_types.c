@@ -15,11 +15,11 @@ JsonNode* json_node_create(char* identifier, JsonValue value) {
 	jnode->value = value;
 	if (json_type_isComplex(value.type)) {
 		jnode->value.jcomplex.nodes = json_allocator.alloc(
-			sizeof(JsonNode*) * JSON_COMPLEX_CAPACITY, 
+			sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_CAPACITY, 
 			json_allocator.context
 		);
-		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_COMPLEX_CAPACITY);
-		jnode->value.jcomplex.max = JSON_COMPLEX_CAPACITY;
+		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_CAPACITY);
+		jnode->value.jcomplex.max = JSON_DYNAMIC_ARRAY_CAPACITY;
 		jnode->value.jcomplex.count = 0;
 	}
 	return jnode;
@@ -30,7 +30,7 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
 		void* temp = json_allocator.realloc(
 			parent->value.jcomplex.nodes,
-			parent->value.jcomplex.max * JSON_COMPLEX_GROW_MULTIPLIER,
+			parent->value.jcomplex.max * JSON_DYNAMIC_ARRAY_GROW_BY,
 			parent->value.jcomplex.max,
 			json_allocator.context
 		);

@@ -100,7 +100,7 @@ char* json_toBuffer(JsonNode* node, enum JsonWriteOption option, ptrdiff_t* leng
 }
 
 char* json_toString(JsonNode* node, enum JsonWriteOption option) {
-	ptrdiff_t length = JSON_BUFFER_DEFAULT;
+	ptrdiff_t length = JSON_BUFFER_CAPACITY;
 	ptrdiff_t offset = 0;
 	char* buffer = json_toBuffer(node, option, &length, &offset);
 	if (offset >= length) {
