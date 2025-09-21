@@ -50,7 +50,7 @@ void json_node_free(JsonNode* jnode) {
 		}
 		json_allocator.free(
 			jnode->value.jcomplex.nodes, 
-			jnodes->value.jcomplex.count * sizeof(JsonNode*),
+			jnode->value.jcomplex.count * sizeof(JsonNode*),
 			json_allocator.context
 		);
 	} else if (jnode->value.type == JSON_STRING) {
