@@ -284,12 +284,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	if (!string) return NULL;
 	char currentChar;
 	while (*offset < length && !strchr(delimiters, currentChar = json_buf_get(buffer, length, offset))) {
-		if (current >= max - 2) { // minus 2 to leave room for null terminating character
-			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
-			if (!temp) return NULL;
-			string = temp;
-			max *= 2;
-		}
+		json_utils_ensureCapacity(&string, &max, current + 1);
 		string[current++] = currentChar;
 	}
 	json_buf_put(currentChar, buffer, length, offset);
@@ -305,12 +300,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	if (!string) return NULL;
 	char currentChar;
 	while (*offset < length && predicate(currentChar = json_buf_get(buffer, length, offset))) {
-		if (current >= max - 2) { // minus 2 to leave room for null terminating character
-			char* temp = json_allocator.realloc(string, max * 2, max, json_allocator.context);
-			if (!temp) return NULL;
-			string = temp;
-			max *= 2;
-		}
+		json_utils_ensureCapacity(&string, &max, current + 1);
 		string[current++] = currentChar;
 	}
 	json_buf_put(currentChar, buffer, length, offset);

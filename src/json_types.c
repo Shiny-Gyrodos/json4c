@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "json_types.h"
+#include "json_utils.h"
 #include "json_config.h"
 
 inline bool json_type_isComplex(JsonType type) {
@@ -30,12 +31,13 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 	if (parent->value.jcomplex.count >= parent->value.jcomplex.max) {
 		void* temp = json_allocator.realloc(
 			parent->value.jcomplex.nodes,
-			parent->value.jcomplex.max * JSON_DYNAMIC_ARRAY_GROW_BY,
-			parent->value.jcomplex.max,
+			parent->value.jcomplex.max * sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_GROW_BY,
+			parent->value.jcomplex.max * sizeof(JsonNode*),
 			json_allocator.context
 		);
-		if (!temp) return;
+		if (!temp) return; // TODO: fix silent error
 		parent->value.jcomplex.nodes = temp;
+		parent->value.jcomplex.max *= JSON_DYNAMIC_ARRAY_GROW_BY;
 	}
 	parent->value.jcomplex.nodes[parent->value.jcomplex.count] = child;
 	parent->value.jcomplex.count++;

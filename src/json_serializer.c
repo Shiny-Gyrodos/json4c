@@ -103,14 +103,7 @@ char* json_toString(JsonNode* node, enum JsonWriteOption option) {
 	ptrdiff_t length = JSON_BUFFER_CAPACITY;
 	ptrdiff_t offset = 0;
 	char* buffer = json_toBuffer(node, option, &length, &offset);
-	if (offset >= length) {
-		void* temp = json_allocator.realloc(buffer, length + 1, length, json_allocator.context);
-		if (!temp) {
-			json_allocator.free(buffer, length, json_allocator.context);
-			return NULL;
-		}
-		buffer = temp;
-	}
+	json_utils_ensureCapacity(&buffer, &length, offset);
 	buffer[offset++] = '\0';
 	return buffer;
 }
