@@ -1,5 +1,18 @@
 #include "json_utils.h"
 #include "json_allocator.h"
+#include "json_config.h"
+
+void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity, ptrdiff_t count) {
+	if (count < *capacity || !ptr || !(*ptr)) return;
+	void* temp = json_allocator.realloc(
+		*ptr,
+		*capacity * size * JSON_DYNAMIC_ARRAY_GROW_BY,
+		*capacity * size,
+		json_allocator.context
+	);
+	if (!temp) return; // TODO: fix silent error
+	*ptr = temp;
+}
 
 void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char** strings) {
 	int i = 0;
@@ -7,21 +20,7 @@ void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* o
 	while (currentString != NULL) {
 		int j;
 		for (j = 0; currentString[j] != '\0'; j++) {
-			if (*offset >= *length) {
-				void* temp = json_allocator.realloc(
-					*buffer, 
-					*length * 2, 
-					*length, 
-					json_allocator.context
-				);
-				if (!temp) {
-					json_allocator.free(*buffer, *length, json_allocator.context);
-					*buffer = NULL;
-					return;
-				}
-				*buffer = temp;
-				*length *= 2;
-			}
+			json_utils_ensureCapacity(buffer, length, *offset);
 			(*buffer)[(*offset)++] = currentString[j]; 
 		}
 		i++;
