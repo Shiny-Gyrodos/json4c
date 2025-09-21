@@ -184,7 +184,7 @@ static void _serializePretty
 	(JsonNode* node, char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char* indent, char* extra) {
 	switch (node->value.type) {
 		case JSON_OBJECT: {
-			appendStr(buffer, length, offset, extra, "{\n");
+			appendStr(buffer, length, offset, extra, "{", node->value.jcomplex.count > 0 ? "\n" : "");
 			// TODO: replace slow solution
 			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
 			sprintf(newIndent, "\t%s", indent);
@@ -216,7 +216,7 @@ static void _serializePretty
 			break;
 		}
 		case JSON_ARRAY: {
-			appendStr(buffer, length, offset, extra, "[\n");
+			appendStr(buffer, length, offset, extra, "[", node->value.jcomplex.count > 0 ? "\n" : "");
 			// TODO: replace slow solution
 			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
 			sprintf(newIndent, "\t%s", indent);
