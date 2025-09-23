@@ -38,15 +38,8 @@ inline char json_buf_get(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 }
 
 // TODO: It isn't clear enough from the return value when this function fails.
-inline char json_buf_put(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
+inline char json_buf_unget(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = c : '\0';
-}
-
-// TODO: what if '\0' is just part of the string?
-inline bool json_buf_putstr(char* string, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	if (*offset + (ptrdiff_t)strlen(string) >= length) return false;
-	for (int i = 0; string[i] != '\0' && json_buf_put(string[i], buffer, length, offset); i++);
-	return true;
 }
 
 inline char json_buf_peek(char* buffer, ptrdiff_t length, ptrdiff_t offset) {

@@ -287,7 +287,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 		json_utils_ensureCapacity(&string, &max, current + 1);
 		string[current++] = currentChar;
 	}
-	json_buf_put(currentChar, buffer, length, offset);
+	json_buf_unget(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string; 
 }
@@ -303,7 +303,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 		json_utils_ensureCapacity(&string, &max, current + 1);
 		string[current++] = currentChar;
 	}
-	json_buf_put(currentChar, buffer, length, offset);
+	json_buf_unget(currentChar, buffer, length, offset);
 	string[current] = '\0';
 	return string;
 }
