@@ -4,6 +4,7 @@
 #include <math.h>
 #include <inttypes.h>
 
+#include "json_error.h"
 #include "json_config.h"
 #include "json_serializer.h"
 #include "json_allocator.h"
@@ -26,6 +27,7 @@ JsonNode* json_object_impl(void** ptrs) {
 			void* temp = json_allocator.alloc(length + 1, json_allocator.context);
 			if (!temp) {
 				json_node_free(jobject);
+				json_error_report("JSON_ERROR: json_object failed, alloc returned NULL");
 				return NULL;
 			}
 			jnode->identifier = temp;
@@ -67,16 +69,16 @@ inline JsonNode* json_string(char* string) {
 }
 
 
-void json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdiff_t length) {
+bool json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdiff_t length) {
 	ptrdiff_t jsonLength = length;
 	ptrdiff_t jsonOffset = 0;
 	char* jsonBuffer = json_toBuffer(node, option, &jsonLength, &jsonOffset);
 	if (jsonLength > length) {
-		// TODO: fix silent error
 		json_allocator.free(jsonBuffer, jsonLength, json_allocator.free);
-		return;
+		return false;
 	}
 	memcpy(buffer, jsonBuffer, jsonLength);
+	return true;
 }
 
 void json_writeFile(JsonNode* node, enum JsonWriteOption option, char* path, char* mode) {
@@ -94,7 +96,7 @@ char* json_toBuffer(JsonNode* node, enum JsonWriteOption option, ptrdiff_t* leng
 	} else if (option == JSON_WRITE_CONDENSED) {
 		_serializeCondensed(node, &buffer, length, offset);
 	} else {
-		return NULL; // TODO: fix silent fail
+		return NULL;
 	}
 	return buffer;
 }

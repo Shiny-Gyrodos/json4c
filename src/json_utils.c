@@ -1,5 +1,6 @@
 #include "json_utils.h"
 #include "json_allocator.h"
+#include "json_error.h"
 #include "json_config.h"
 
 void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity, ptrdiff_t count) {
@@ -10,15 +11,18 @@ void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity
 		*capacity * size,
 		json_allocator.context
 	);
-	if (!temp) return; // TODO: fix silent error
+	if (!temp) {
+		json_error_report("JSON_ERROR: json_utils_ensureCapacity failed, realloc returned NULL");
+		return;
+	}
 	*ptr = temp;
 }
 
 void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char** strings) {
-	int i = 0;
+	ptrdiff_t i = 0;
 	char* currentString = strings[i];
 	while (currentString != NULL) {
-		int j;
+		ptrdiff_t j;
 		for (j = 0; currentString[j] != '\0'; j++) {
 			json_utils_ensureCapacity(buffer, length, *offset);
 			(*buffer)[(*offset)++] = currentString[j]; 

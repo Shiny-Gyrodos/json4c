@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "json_types.h"
+#include "json_error.h"
 #include "json_utils.h"
 #include "json_config.h"
 
@@ -11,7 +12,10 @@ inline bool json_type_isComplex(JsonType type) {
 
 JsonNode* json_node_create(char* identifier, JsonValue value) {
 	JsonNode* jnode = json_allocator.alloc(sizeof(JsonNode), json_allocator.context);
-	if (!jnode) return NULL;
+	if (!jnode) {
+		json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
+		return NULL:
+	}
 	jnode->identifier = identifier;
 	jnode->value = value;
 	if (json_type_isComplex(value.type)) {
@@ -19,6 +23,11 @@ JsonNode* json_node_create(char* identifier, JsonValue value) {
 			sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_CAPACITY, 
 			json_allocator.context
 		);
+		if (!jnode->value.jcomplex.nodes) {
+			json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
+			json_node_free(jnode);
+			return NULL:
+		}
 		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_CAPACITY);
 		jnode->value.jcomplex.max = JSON_DYNAMIC_ARRAY_CAPACITY;
 		jnode->value.jcomplex.count = 0;
@@ -35,7 +44,10 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 			parent->value.jcomplex.max * sizeof(JsonNode*),
 			json_allocator.context
 		);
-		if (!temp) return; // TODO: fix silent error
+		if (!temp) {
+			json_error_report("JSON_ERROR: json_node_append failed, realloc returned NULL");
+			return;
+		}
 		parent->value.jcomplex.nodes = temp;
 		parent->value.jcomplex.max *= JSON_DYNAMIC_ARRAY_GROW_BY;
 	}

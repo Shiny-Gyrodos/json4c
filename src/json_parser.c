@@ -5,6 +5,8 @@
 #include <stdio.h>
 
 #include "json_parser.h"
+#include "json_error.h"
+#include "json_serializer.h"
 #include "json_types.h"
 #include "json_config.h"
 #include "json_utils.h"
@@ -40,6 +42,9 @@ JsonNode* json_parse(char* buffer, ptrdiff_t length) {
 	ptrdiff_t offset = 0;
 	parserFunc firstParser = _getParser(json_buf_peek(buffer, length, offset));
 	JsonNode* root = firstParser(buffer, length, &offset);
+	if (IS_ERROR(root)) {
+		json_error_report(json_toString(root, JSON_WRITE_PRETTY));
+	}
 	return root;
 }
 
@@ -280,7 +285,10 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	ptrdiff_t max = JSON_DYNAMIC_ARRAY_CAPACITY;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
-	if (!string) return NULL;
+	if (!string) {
+		json_error_report("JSON_ERROR: _scanUntil failed, alloc returned NULL");
+		return NULL:
+	}
 	char currentChar;
 	while (*offset < length && !strchr(delimiters, currentChar = json_buf_get(buffer, length, offset))) {
 		json_utils_ensureCapacity(&string, &max, current + 1);
@@ -296,7 +304,9 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	ptrdiff_t max = JSON_DYNAMIC_ARRAY_CAPACITY;
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
-	if (!string) return NULL;
+	if (!string) {
+		json_error_report("JSON_ERROR: _scanWhile failed, alloc returned NULL");
+	}
 	char currentChar;
 	while (*offset < length && predicate(currentChar = json_buf_get(buffer, length, offset))) {
 		json_utils_ensureCapacity(&string, &max, current + 1);
