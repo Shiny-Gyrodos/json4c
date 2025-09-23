@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #include "json_allocator.h"
 
@@ -31,8 +32,8 @@ typedef struct JsonValue {
 		char* string;
 		struct {
 			struct JsonNode** nodes;
-			size_t max;
-			size_t count;
+			ptrdiff_t max;
+			ptrdiff_t count;
 		} jcomplex;
 	};
 } JsonValue;

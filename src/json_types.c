@@ -46,7 +46,7 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 void json_node_free(JsonNode* jnode) {
 	if (!jnode) return;
 	if (json_type_isComplex(jnode->value.type)) {
-		size_t i;
+		ptrdiff_t i;
 		for (i = 0; i < jnode->value.jcomplex.count; i++) {
 			json_node_free(jnode->value.jcomplex.nodes[i]);
 		}

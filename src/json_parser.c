@@ -65,7 +65,7 @@ JsonNode* json_parseFile(char* path) {
 
 JsonNode* json_property(JsonNode* jnode, char* identifier) {
 	if (!jnode || !identifier || jnode->value.type != JSON_OBJECT) return NULL;
-	size_t i;
+	ptrdiff_t i;
 	for (i = 0; i < jnode->value.jcomplex.count; i++) {
 		if (strcmp(jnode->value.jcomplex.nodes[i]->identifier, identifier) == 0) {
 			return jnode->value.jcomplex.nodes[i];
@@ -74,7 +74,7 @@ JsonNode* json_property(JsonNode* jnode, char* identifier) {
 	return NULL;
 }
 
-JsonNode* json_index(JsonNode* jnode, size_t index) {
+JsonNode* json_index(JsonNode* jnode, ptrdiff_t index) {
 	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count) 
 		return NULL;
 	return jnode->value.jcomplex.nodes[index];

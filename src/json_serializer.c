@@ -15,7 +15,7 @@ static void _serializePretty(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*, char*, c
 
 JsonNode* json_object_impl(void** ptrs) {
 	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, {0}});
-	int i;
+	ptrdiff_t i;
 	char* identifier = NULL;
 	for (i = 0; ptrs[i]; i++) {
 		if (i % 2 == 0) { // starting with the first, every other value is an identifier (char*)
@@ -39,7 +39,7 @@ JsonNode* json_object_impl(void** ptrs) {
 
 JsonNode* json_array_impl(JsonNode** jnodes) {
 	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, {0}});
-	int i;
+	ptrdiff_t i;
 	for (i = 0; jnodes[i]; i++) {
 		json_node_append(jarray, jnodes[i]);
 	}
@@ -116,7 +116,7 @@ static void _serializeCondensed(JsonNode* node, char** buffer, ptrdiff_t* length
 	switch (node->value.type) {
 		case JSON_OBJECT:
 			appendStr(buffer, length, offset, "{");
-			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+			for (ptrdiff_t i = 0; i < node->value.jcomplex.count; i++) {
 				appendStr(
 					buffer, 
 					length, 
@@ -134,7 +134,7 @@ static void _serializeCondensed(JsonNode* node, char** buffer, ptrdiff_t* length
 			break;
 		case JSON_ARRAY:
 			appendStr(buffer, length, offset, "[");
-			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+			for (ptrdiff_t i = 0; i < node->value.jcomplex.count; i++) {
 				_serializeCondensed(node->value.jcomplex.nodes[i], buffer, length, offset);
 				if (i + 1 < node->value.jcomplex.count) {
 					appendStr(buffer, length, offset, ",");
@@ -181,7 +181,7 @@ static void _serializePretty
 			// TODO: replace slow solution
 			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
 			sprintf(newIndent, "\t%s", indent);
-			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+			for (ptrdiff_t i = 0; i < node->value.jcomplex.count; i++) {
 				appendStr(
 					buffer, 
 					length, 
@@ -213,7 +213,7 @@ static void _serializePretty
 			// TODO: replace slow solution
 			char* newIndent = json_allocator.alloc(strlen(indent) + 2, json_allocator.context);
 			sprintf(newIndent, "\t%s", indent);
-			for (size_t i = 0; i < node->value.jcomplex.count; i++) {
+			for (ptrdiff_t i = 0; i < node->value.jcomplex.count; i++) {
 				appendStr(buffer, length, offset, newIndent);
 				_serializePretty(node->value.jcomplex.nodes[i], buffer, length, offset, newIndent, newIndent);
 				if (i + 1 < node->value.jcomplex.count) {
