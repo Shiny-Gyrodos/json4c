@@ -43,6 +43,7 @@ JsonNode* json_parse(char* buffer, ptrdiff_t length) {
 	parserFunc firstParser = _getParser(json_buf_peek(buffer, length, offset));
 	JsonNode* root = firstParser(buffer, length, &offset);
 	if (IS_ERROR(root)) {
+		DEBUG("a parsing error occurred");
 		json_error_report(json_toString(root, JSON_WRITE_PRETTY));
 	}
 	return root;
@@ -287,7 +288,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) {
 		json_error_report("JSON_ERROR: _scanUntil failed, alloc returned NULL");
-		return NULL:
+		return NULL;
 	}
 	char currentChar;
 	while (*offset < length && !strchr(delimiters, currentChar = json_buf_get(buffer, length, offset))) {

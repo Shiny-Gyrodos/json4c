@@ -9,14 +9,18 @@ struct {
 	ptrdiff_t count;
 } errorStack = { .count = 0 };
 
-void (*json_error_onErrorReported)(char* errorMsg);
-void (*json_error_onMaxErrors)(void);
+void (*json_error_onErrorReported)(char* errorMsg) = NULL;
+void (*json_error_onMaxErrors)(void) = NULL;
 
 
 void json_error_report(char* errorMsg) {
-	json_error_onErrorReported(errorMsg);
+	if (json_error_onErrorReported) {
+		json_error_onErrorReported(errorMsg);
+	}
 	if (errorStack.count >= JSON_MAX_ERRORS_RECORDED) {
-		json_error_onMaxErrors();
+		if (json_error_onMaxErrors) {
+			json_error_onMaxErrors();
+		}
 		json_error_reset();
 	}
 	errorStack.errors[errorStack.count++] = errorMsg;
@@ -45,7 +49,7 @@ ptrdiff_t json_error_count(void) {
 }
 
 char* json_error_pop(void) {
-	if (errorStack.count - 1 < 0) return NULL:
+	if (errorStack.count - 1 < 0) return NULL;
 	return errorStack.errors[--errorStack.count];
 }
 

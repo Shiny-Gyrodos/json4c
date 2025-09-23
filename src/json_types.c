@@ -14,7 +14,7 @@ JsonNode* json_node_create(char* identifier, JsonValue value) {
 	JsonNode* jnode = json_allocator.alloc(sizeof(JsonNode), json_allocator.context);
 	if (!jnode) {
 		json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
-		return NULL:
+		return NULL;
 	}
 	jnode->identifier = identifier;
 	jnode->value = value;
@@ -26,7 +26,7 @@ JsonNode* json_node_create(char* identifier, JsonValue value) {
 		if (!jnode->value.jcomplex.nodes) {
 			json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
 			json_node_free(jnode);
-			return NULL:
+			return NULL;
 		}
 		memset(jnode->value.jcomplex.nodes, 0, sizeof(JsonNode*) * JSON_DYNAMIC_ARRAY_CAPACITY);
 		jnode->value.jcomplex.max = JSON_DYNAMIC_ARRAY_CAPACITY;
