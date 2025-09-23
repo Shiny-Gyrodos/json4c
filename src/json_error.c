@@ -15,7 +15,7 @@ void json_error_report(char* errorMsg) {
 }
 
 void json_error_extract(JsonNode* node) {
-	char* errorMsg = json_toString(node);
+	char* errorMsg = json_toString(node, JSON_WRITE_PRETTY);
 	json_error_report(errorMsg);
 }
 
@@ -24,7 +24,7 @@ void json_error_extractAndFree(JsonNode* node) {
 	json_node_free(node);
 }
 
-ptrdiff_t json_error_reset(void) {
+void json_error_reset(void) {
 	ptrdiff_t i;
 	for (i = 0; i < errorStack.count; i++) {
 		errorStack.errors[i] = NULL;
@@ -40,7 +40,7 @@ char* json_error_pop(void) {
 	return errorStack.errors[--errorStack.count];
 }
 
-const char** json_error_all(ptrdiff_t* count) {
+char** json_error_all(ptrdiff_t* count) {
 	*count = errorStack.count;
 	return errorStack.errors;
 }
