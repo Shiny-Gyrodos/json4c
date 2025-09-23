@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#define CONSTRAIN(condition)
-
 #define json_utils_ensureCapacity(ptr, capacity, count)			\
 	json_utils_ensureCapacity_impl((void**)ptr, sizeof(*(*(ptr))), capacity, count)
 void json_utils_ensureCapacity_impl(void**, size_t, ptrdiff_t*, ptrdiff_t);

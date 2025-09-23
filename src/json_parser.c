@@ -141,9 +141,8 @@ static JsonNode* _object(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 		JsonNode* appendee = currentParser(buffer, length, offset);
 		if (!appendee) {
 			continue;
-		} else if (appendee->value.type == JSON_ERROR) { // TODO: this is wasteful, FIX
+		} else if (appendee->value.type == JSON_ERROR) {
 			json_node_free(jobject);
-			DEBUG("parser returned JSON_ERROR, bailing out");
 			return appendee;
 		} else if (!identifier && appendee->value.type == JSON_STRING) {
 			identifier = json_allocator.alloc(strlen(appendee->value.string) + 1, json_allocator.context);
@@ -177,8 +176,7 @@ static JsonNode* _array(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 			continue;
 		} else if (appendee->value.type == JSON_ERROR) {
 			json_node_free(jarray);
-			DEBUG("parser returned JSON_ERROR, bailing out");
-			return appendee; // TODO: better error reporting
+			return appendee;
 		}
 		json_node_append(jarray, appendee);
 	}
@@ -207,6 +205,7 @@ static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return jnode;
 }
 
+// TODO: _string should unescape characters
 static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	json_buf_get(buffer, length, offset); // Not json_bufexpect because at this point we know it's '"'
 	char* string = _scanUntil("\"", buffer, length, offset);

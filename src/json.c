@@ -10,3 +10,4 @@
 #include "json_allocator.c"
 #include "json_parser.c"
 #include "json_serializer.c"
+#include "json_error.c"
