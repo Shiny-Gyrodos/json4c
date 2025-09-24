@@ -27,7 +27,7 @@ JsonNode* json_object_impl(void** ptrs) {
 			void* temp = json_allocator.alloc(length + 1, json_allocator.context);
 			if (!temp) {
 				json_node_free(jobject);
-				json_error_report("JSON_ERROR: json_object failed, alloc returned NULL");
+				json_error_reportCritical("JSON_ERROR: json_object failed, alloc returned NULL");
 				return NULL;
 			}
 			jnode->identifier = temp;

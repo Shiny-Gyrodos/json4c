@@ -10,20 +10,25 @@ struct {
 } errorStack = { .count = 0 };
 
 void (*json_error_onErrorReported)(char* errorMsg) = NULL;
+void (*json_error_onCriticalErrorReported(char* errorMsg) = NULL;
 void (*json_error_onMaxErrors)(void) = NULL;
+
+
+void _reportError(char*);
 
 
 void json_error_report(char* errorMsg) {
 	if (json_error_onErrorReported) {
 		json_error_onErrorReported(errorMsg);
 	}
-	if (errorStack.count >= JSON_MAX_ERRORS_RECORDED) {
-		if (json_error_onMaxErrors) {
-			json_error_onMaxErrors();
-		}
-		json_error_reset();
+	_reportError(errorMsg);
+}
+
+void json_error_reportCritical(char* errorMsg) {
+	if (json_error_onCriticalErrorReported) {
+		json_error_onCriticalErrorReported(errorMsg);
 	}
-	errorStack.errors[errorStack.count++] = errorMsg;
+	_reportError(errorMsg);
 }
 
 void json_error_extract(JsonNode* node) {
@@ -63,4 +68,15 @@ void json_error_printAll(FILE* stream) {
 	for (i = 0; i < errorStack.count; i++) {
 		fputs(errorStack.errors[i], stream);
 	}
+}
+
+
+void _reportError(char* errorMsg) {
+	if (errorStack.count >= JSON_MAX_ERRORS_RECORDED) {
+		if (json_error_onMaxErrors) {
+			json_error_onMaxErrors();
+		}
+		json_error_reset();
+	}
+	errorStack.errors[errorStack.count++] = errorMsg;
 }

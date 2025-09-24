@@ -13,7 +13,7 @@ inline bool json_type_isComplex(JsonType type) {
 JsonNode* json_node_create(char* identifier, JsonValue value) {
 	JsonNode* jnode = json_allocator.alloc(sizeof(JsonNode), json_allocator.context);
 	if (!jnode) {
-		json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
+		json_error_reportCritical("JSON_ERROR: json_node_create failed, alloc returned NULL");
 		return NULL;
 	}
 	jnode->identifier = identifier;
@@ -24,7 +24,7 @@ JsonNode* json_node_create(char* identifier, JsonValue value) {
 			json_allocator.context
 		);
 		if (!jnode->value.jcomplex.nodes) {
-			json_error_report("JSON_ERROR: json_node_create failed, alloc returned NULL");
+			json_error_reportCritical("JSON_ERROR: json_node_create failed, alloc returned NULL");
 			json_node_free(jnode);
 			return NULL;
 		}
@@ -45,7 +45,7 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 			json_allocator.context
 		);
 		if (!temp) {
-			json_error_report("JSON_ERROR: json_node_append failed, realloc returned NULL");
+			json_error_reportCritical("JSON_ERROR: json_node_append failed, realloc returned NULL");
 			return;
 		}
 		parent->value.jcomplex.nodes = temp;

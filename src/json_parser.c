@@ -64,7 +64,7 @@ JsonNode* json_parseFile(char* path) {
 	size_t bytesRead = fread(buffer, 1, length, jsonStream);
 	fclose(jsonStream);
 	buffer[bytesRead] = '\0';
-	DEBUG("file contents:\n%s", buffer);
+	DEBUG("file contents:\n%s\n", buffer);
 	
 	return json_parse(buffer, length);
 }
@@ -287,7 +287,7 @@ char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* of
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) {
-		json_error_report("JSON_ERROR: _scanUntil failed, alloc returned NULL");
+		json_error_reportCritical("JSON_ERROR: _scanUntil failed, alloc returned NULL");
 		return NULL;
 	}
 	char currentChar;
@@ -306,7 +306,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) {
-		json_error_report("JSON_ERROR: _scanWhile failed, alloc returned NULL");
+		json_error_reportCritical("JSON_ERROR: _scanWhile failed, alloc returned NULL");
 	}
 	char currentChar;
 	while (*offset < length && predicate(currentChar = json_buf_get(buffer, length, offset))) {
