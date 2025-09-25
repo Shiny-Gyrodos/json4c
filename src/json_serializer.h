@@ -23,8 +23,8 @@ JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
 
-bool json_write(JsonNode* jnode, enum JsonWriteOption, char* buffer, ptrdiff_t length);
-void json_writeFile(JsonNode* jnode, enum JsonWriteOption, char* path, char* mode);
+bool json_write(JsonNode* jnode, char* buffer, ptrdiff_t length, enum JsonWriteOption);
+void json_writeFile(JsonNode* jnode, char* path, enum JsonWriteOption);
 
 /* 
 	NOTE:
@@ -33,7 +33,7 @@ void json_writeFile(JsonNode* jnode, enum JsonWriteOption, char* path, char* mod
 	and assigns *length to the buffer length and *offset to n + 1 where n is 
 	the amount of bytes in the buffer.
 */
-char* json_toBuffer(JsonNode* node, enum JsonWriteOption, ptrdiff_t* length, ptrdiff_t* offset);
+char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset, enum JsonWriteOption);
 char* json_toString(JsonNode* node, enum JsonWriteOption);
 
 #endif // JSON4C_SERIALIZER

@@ -69,10 +69,10 @@ inline JsonNode* json_string(char* string) {
 }
 
 
-bool json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdiff_t length) {
+bool json_write(JsonNode* node, char* buffer, ptrdiff_t length, enum JsonWriteOption option) {
 	ptrdiff_t jsonLength = length;
 	ptrdiff_t jsonOffset = 0;
-	char* jsonBuffer = json_toBuffer(node, option, &jsonLength, &jsonOffset);
+	char* jsonBuffer = json_toBuffer(node, &jsonLength, &jsonOffset, option);
 	if (jsonOffset + 1 > length) {
 		json_allocator.free(jsonBuffer, jsonLength, json_allocator.context);
 		return false;
@@ -81,15 +81,15 @@ bool json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdi
 	return true;
 }
 
-void json_writeFile(JsonNode* node, enum JsonWriteOption option, char* path, char* mode) {
-	FILE* stream = fopen(path, mode);
+void json_writeFile(JsonNode* node, char* path, enum JsonWriteOption option) {
+	FILE* stream = fopen(path, "w");
 	char* jsonText = json_toString(node, option);
 	fputs(jsonText, stream);
 	fclose(stream);
 }
 
 
-char* json_toBuffer(JsonNode* node, enum JsonWriteOption option, ptrdiff_t* length, ptrdiff_t* offset) {
+char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset, enum JsonWriteOption option) {
 	char* buffer = json_allocator.alloc(*length, json_allocator.context);
 	if (option == JSON_WRITE_PRETTY) {
 		_serializePretty(node, &buffer, length, offset, "", "");
@@ -104,7 +104,7 @@ char* json_toBuffer(JsonNode* node, enum JsonWriteOption option, ptrdiff_t* leng
 char* json_toString(JsonNode* node, enum JsonWriteOption option) {
 	ptrdiff_t length = JSON_BUFFER_CAPACITY;
 	ptrdiff_t offset = 0;
-	char* buffer = json_toBuffer(node, option, &length, &offset);
+	char* buffer = json_toBuffer(node, &length, &offset, option);
 	json_utils_ensureCapacity(&buffer, &length, offset);
 	buffer[offset++] = '\0';
 	return buffer;
