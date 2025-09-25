@@ -34,9 +34,9 @@ void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* o
 
 
 char json_utils_unescapeChar(char* bytes) {
-	if (*bytes != '\\') return NULL;
+	if (*bytes != '\\') return '\0';
 	bytes++;
-	switch (*chars) {
+	switch (*bytes) {
 		case 't':
 			return '\t';
 		case 'r':
@@ -55,12 +55,14 @@ char json_utils_unescapeChar(char* bytes) {
 			return '\\';
 		case 'u':
 			json_error_report("JSON_ERROR: json_utils_unescapeChar failed, escaped hex digits not yet supported");
-			return '\0'
+			return '\0';
 	}
+	return '\0';
 }
 
 char* json_utils_escapeChar(char* character) {
-	
+	(void)character;
+	return NULL;
 }
 
 
