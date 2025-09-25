@@ -60,8 +60,32 @@ char json_utils_unescapeChar(char* bytes) {
 	return '\0';
 }
 
-char* json_utils_escapeChar(char* character) {
-	(void)character;
+char* json_utils_escapeChar(char character) {
+	char* string = json_allocator.alloc(3, json_allocator.context);
+	if (!string) {
+		json_error_reportCritical("JSON_ERROR: json_utils_escapeChar failed, alloc returned NULL");
+		return NULL;
+	}
+	switch (character) {
+		case '\t':
+			return strcpy(string, "\\t");
+		case '\r':
+			return strcpy(string, "\\r");
+		case '\n':
+			return strcpy(string, "\\n");
+		case '\b':
+			return strcpy(string, "\\b");
+		case '\f':
+			return strcpy(string, "\\f");
+		case '\\':
+			return strcpy(string, "\\\\");
+		case '/':
+			return strcpy(string, "\\/");
+		case '"':
+			return strcpy(string, "\\\"");
+	}
+	json_error_report("JSON_ERROR: json_utils_escapeChar failed, escaping hex digits isn't yet supported");
+	json_allocator.free(string, 3, json_allocator.context);
 	return NULL;
 }
 
