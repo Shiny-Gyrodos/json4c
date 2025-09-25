@@ -73,11 +73,11 @@ bool json_write(JsonNode* node, enum JsonWriteOption option, char* buffer, ptrdi
 	ptrdiff_t jsonLength = length;
 	ptrdiff_t jsonOffset = 0;
 	char* jsonBuffer = json_toBuffer(node, option, &jsonLength, &jsonOffset);
-	if (jsonLength > length) {
-		json_allocator.free(jsonBuffer, jsonLength, json_allocator.free);
+	if (jsonOffset + 1 > length) {
+		json_allocator.free(jsonBuffer, jsonLength, json_allocator.context);
 		return false;
 	}
-	memcpy(buffer, jsonBuffer, jsonLength);
+	memcpy(buffer, jsonBuffer, jsonOffset + 1);
 	return true;
 }
 

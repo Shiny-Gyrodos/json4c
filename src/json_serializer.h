@@ -23,7 +23,7 @@ JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
 
-bool json_write(JsonNode* jnode, enum JsonWriteOption option, char* buffer, ptrdiff_t length);
+bool json_write(JsonNode* jnode, enum JsonWriteOption, char* buffer, ptrdiff_t length);
 void json_writeFile(JsonNode* jnode, enum JsonWriteOption, char* path, char* mode);
 
 /* 
