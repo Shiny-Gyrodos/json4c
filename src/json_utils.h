@@ -15,6 +15,7 @@ void json_utils_dynAppendStr_impl(char**, ptrdiff_t*, ptrdiff_t*, char**);
 
 char json_utils_unescapeChar(char*);
 char* json_utils_escapeChar(char);
+char* json_utils_toEscaped(char*);
 
 bool json_buf_expect(char, char*, ptrdiff_t, ptrdiff_t*);
 char json_buf_get(char*, ptrdiff_t, ptrdiff_t*);

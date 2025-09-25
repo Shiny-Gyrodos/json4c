@@ -89,6 +89,59 @@ char* json_utils_escapeChar(char character) {
 	return NULL;
 }
 
+bool _isEscapable(char c) {
+	return c == '\t' || c == '\r' || c == '\n' || c == '\b' || c == '\b' || c == '\f' || c == '/' || c == '\\';
+}
+
+char* json_utils_toEscaped(char* string) {
+	ptrdiff_t addedMemory = 0;
+	ptrdiff_t i;
+	for (i = 0; string[i] != '\0'; i++) {
+		if (_isEscapable(string[i]))
+			addedMemory++;
+	}
+	ptrdiff_t length = strlen(string);
+	char* newString = json_allocator.alloc(length + addedMemory + 1, json_allocator.context);
+	if (!newString)
+		json_error_reportCritical("JSON_ERROR: json_utils_toEscaped failed, alloc returned NULL");
+	ptrdiff_t offset = 0;
+	for (i = 0; string[i] != '\0'; i++, offset++) {
+		if (!_isEscapable(string[i])) {
+			newString[offset] = string[i];
+			continue;
+		}
+		newString[offset++] = '\\';
+		switch (string[i]) {
+			case '\t':
+				newString[offset] = 't';
+				break;
+			case '\r':
+				newString[offset] = 'r';
+				break;
+			case '\n':
+				newString[offset] = 'n';
+				break;
+			case '\b':
+				newString[offset] = 'b';
+				break;
+			case '\f':
+				newString[offset] = 'f';
+				break;
+			case '\\':
+				newString[offset] = '\\';
+				break;
+			case '/':
+				newString[offset] = '/';
+				break;
+			case '"':
+				newString[offset] = '"';
+				break;
+		}
+	}
+	newString[offset] = '\0';
+	return newString;
+}
+
 
 inline bool json_buf_expect(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return c == json_buf_get(buffer, length, offset);
