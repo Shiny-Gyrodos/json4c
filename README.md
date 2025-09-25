@@ -3,8 +3,6 @@
 
 **WARNING**: This library's parser is not yet compliant to the JSON standard in the way it parses numbers (it is too lenient) and strings (escape codes aren't handled correctly).
 
-**NOTE**: The serialization API is still in progress, expect changes to the function signatures.
-
 A simple, flexible JSON library written in pure C99.
 
 ## Building
@@ -138,7 +136,7 @@ int main(int argc, char* argv[]) {
 
 ### Serialization
 
-There are a handful of function the library provides for serialization. Below are their signatures.
+There are a handful of functions the library provides for serialization. Below are their signatures.
 
 ~~~c
 // Creating
