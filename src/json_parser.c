@@ -131,7 +131,14 @@ static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 
 // NOTE: a parser returning NULL means an unimportant character was parsed, a parser that fails returns JSON_ERROR
 static JsonNode* _skip(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	DEBUG("( %c ) skipped", json_buf_get(buffer, length, offset));
+	char c = json_buf_get(buffer, length, offset);
+	if (c == ' ' || c == ',' || c == ':') {
+		DEBUG("( %c ) skipped", c);
+	} else {
+		char* escaped = json_utils_escapeChar(c);
+		DEBUG("( %s ) skipped", escaped);
+		json_allocator.free(escaped, strlen(escaped), json_allocator.context);
+	}
 	return NULL;
 }
 
