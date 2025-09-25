@@ -18,6 +18,45 @@ JSON4C is a unity build for ease of use. The only files you need to worry about 
 
 ## Examples
 
+### Types
+
+The main type used by this library is `JsonNode`, it is used to represent the JSON tree. Below is its definition.
+
+~~~c
+typedef struct JsonNode {
+	char* identifier;
+	struct {
+		JsonType type;
+		union {
+			int64_t integer;
+			double real;
+			bool boolean;
+			char* string;
+			struct {
+				struct JsonNode** nodes;
+				ptrdiff_t max;
+				ptrdiff_t count;
+			} jcomplex;
+		};
+	} value;
+} JsonNode;
+~~~
+
+`JsonType` is a simple enum used for denoting what value the union represents, it is defined as:
+
+~~~c
+typedef enum {
+	JSON_ERROR,
+	JSON_OBJECT,
+	JSON_ARRAY,
+	JSON_INT,
+	JSON_REAL,
+	JSON_STRING,
+	JSON_BOOL,
+	JSON_NULL
+} JsonType;
+~~~
+
 ### Parsing
 
 There are two functions provided for parsing JSON, `json_parse` and `json_parseFile`, below are their signatures.
@@ -40,17 +79,15 @@ JsonNode* json_index(JsonNode* node, int index);
 */
 JsonNode* json_get(JsonNode* node, ...);
 
-/*
-	The helper macros are:
-	IS_INT(node)	AS_INT(node)
-	IS_REAL(node)	AS_REAL(node)
-	IS_STRING(node)	AS_STRING(node)
-	IS_BOOL(node) 	AS_BOOL(node)
-	IS_NULL(node) 	AS_NULL(node)
-	IS_ARRAY(node) 	AS_ARRAY(node)
-	IS_OBJECT(node) AS_OBJECT(node)
-	IS_ERROR(node) 	
-*/
+// The helper macros are:
+IS_INT(node)	AS_INT(node)
+IS_REAL(node)	AS_REAL(node)
+IS_STRING(node)	AS_STRING(node)
+IS_BOOL(node) 	AS_BOOL(node)
+IS_NULL(node) 	AS_NULL(node)
+IS_ARRAY(node) 	AS_ARRAY(node)
+IS_OBJECT(node) AS_OBJECT(node)
+IS_ERROR(node) 	
 ~~~
 
 #### Usage
@@ -101,6 +138,45 @@ int main(int argc, char* argv[]) {
 
 ### Serialization
 
+There are a handful of function the library provides for serialization. Below are their signatures.
+
+~~~c
+// Creating
+
+JsonNode* json_object(void**);
+JsonNode* json_emptyObject(void);
+JsonNode* json_array(JsonNode**);
+JsonNode* json_emptyArray(void);
+JsonNode* json_bool(bool);
+JsonNode* json_int(int);
+JsonNode* json_real(double);
+JsonNode* json_null(void);
+JsonNode* json_string(char*);
+
+// Writing
+
+bool json_write(JsonNode* node, char* buffer, ptrdiff_t length, enum JsonWriteOption option);
+void json_writeFile(JsonNode* node, char* path, enum JsonWriteOption option);
+// NOTE: You are responsible for freeing the char* returned by these functions.
+char* json_toBuffer(JsonNode* node, ptrdiff_t* length, ptrdiff_t* offset, enum JsonWriteOption option);
+char* json_toString(JsonNode* node, enum JsonWriteOption option);
+~~~
+
+`enum JsonWriteOption` is defined as:
+
+~~~c
+enum JsonWriteOption {
+	JSON_WRITE_PRETTY,
+	JSON_WRITE_CONDENSED
+};
+~~~
+
+`JSON_WRITE_PRETTY` adds whitespace characters and newlines to the written JSON, while `JSON_WRITE_CONDENSED` doesn't.
+
+#### Usage
+
+Here is an example of creating a JSON tree and writing it to the `data/test.json` file.
+
 ~~~c
 #include <stdio.h>
 #include "json4c/json.h"
@@ -133,8 +209,7 @@ int main(void) {
 		),
 		"test_history", json_emptyArray()
 	);
-	// the last argument is for the write option, it is passed into fopen()
-	json_writeFile("data/test.json", rootObject, "w");
+	json_writeFile("data/test.json", rootObject, JSON_WRITE_PRETTY);
 	json_node_free(rootObject);
 	return 0;
 }
@@ -151,9 +226,10 @@ Below are all some of the macros the library uses that can be overidden by the u
 #define JSON_DYNAMIC_ARRAY_CAPACITY 16
 #define JSON_DYNAMIC_ARRAY_GROW_BY 2
 #define JSON_BUFFER_CAPACITY 256
+#define JSON_MAX_ERRORS_RECORDED 64
 ~~~
 
-Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_DYNAMIC_ARRAY_GROW_BY=4`. NOTE: More customization macros are in the works!
+Just use `-D` when compiling, e. `-D JSON_DEBUG -D JSON_DYNAMIC_ARRAY_GROW_BY=4`.
 
 ### Custom Allocators
 
@@ -168,9 +244,9 @@ If you want the library to use a custom allocator, you can use the `json_setAllo
 	To support all kinds of custom allocators, the signatures for the
 	allocator functions differ from you might expect. They are as follows:
 	
-	void* (*custom_alloc)(size_t size, void* instanceptr);
-	void (*custom_free)(void* ptr, size_t size, void* instanceptr);
-	void* (*custom_realloc)(void* ptr, size_t newSize, size_t oldSize, void* instanceptr);
+	void* (*custom_alloc)(ptrdiff_t size, void* instanceptr);
+	void (*custom_free)(void* ptr, ptrdiff_t size, void* instanceptr);
+	void* (*custom_realloc)(void* ptr, ptrdiff_t newSize, ptrdiff_t oldSize, void* instanceptr);
 */
 
 int main(void) {
