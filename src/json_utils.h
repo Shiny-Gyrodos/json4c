@@ -13,6 +13,9 @@ void json_utils_ensureCapacity_impl(void**, size_t, ptrdiff_t*, ptrdiff_t);
 	json_utils_dynAppendStr_impl(bufferptr, lengthptr, offsetptr, (char*[]){__VA_ARGS__, NULL})
 void json_utils_dynAppendStr_impl(char**, ptrdiff_t*, ptrdiff_t*, char**);
 
+char* json_utils_unescapeChar(char*);
+char* json_utils_escapeChar(char*);
+
 bool json_buf_expect(char, char*, ptrdiff_t, ptrdiff_t*);
 char json_buf_get(char*, ptrdiff_t, ptrdiff_t*);
 char json_buf_unget(char, char*, ptrdiff_t, ptrdiff_t*);
