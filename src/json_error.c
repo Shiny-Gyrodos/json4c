@@ -10,7 +10,7 @@ struct {
 } errorStack = { .count = 0 };
 
 void (*json_error_onErrorReported)(char* errorMsg) = NULL;
-void (*json_error_onCriticalErrorReported(char* errorMsg) = NULL;
+void (*json_error_onCriticalErrorReported)(char* errorMsg) = NULL;
 void (*json_error_onMaxErrors)(void) = NULL;
 
 

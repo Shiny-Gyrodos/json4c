@@ -6,7 +6,7 @@
 #include "json_types.h"
 
 extern void (*json_error_onErrorReported)(char* errorMsg);
-extern void (*json_error_onCriticalErrorReported(char* errorMsg);
+extern void (*json_error_onCriticalErrorReported)(char* errorMsg);
 extern void (*json_error_onMaxErrors)(void);
 
 void json_error_report(char*);
