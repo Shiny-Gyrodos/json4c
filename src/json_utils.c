@@ -90,7 +90,7 @@ char* json_utils_escapeChar(char character) {
 }
 
 bool _isEscapable(char c) {
-	return c == '\t' || c == '\r' || c == '\n' || c == '\b' || c == '\b' || c == '\f' || c == '/' || c == '\\';
+	return c == '\t' || c == '\r' || c == '\n' || c == '\b' || c == '\f' || c == '/' || c == '\\';
 }
 
 char* json_utils_toEscaped(char* string) {
