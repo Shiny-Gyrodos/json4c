@@ -317,7 +317,7 @@ char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdif
 	ptrdiff_t current = 0;
 	char* string = json_allocator.alloc(max, json_allocator.context);
 	if (!string) {
-		json_error_reportCritical("JSON_ERROR: _scanWhile failed, alloc returned NULL");
+		return NULL;
 	}
 	char currentChar;
 	while (*offset < length && predicate(currentChar = json_buf_get(buffer, length, offset))) {
