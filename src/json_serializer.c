@@ -52,7 +52,7 @@ inline JsonNode* json_bool(bool boolean) {
 	return json_node_create(NULL, (JsonValue){JSON_BOOL, .boolean = boolean});
 }
 
-inline JsonNode* json_int(int integer) {
+inline JsonNode* json_int(int64_t integer) {
 	return json_node_create(NULL, (JsonValue){JSON_INT, .integer = integer});
 }
 

@@ -2,6 +2,7 @@
 #define JSON4C_SERIALIZER
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 
 #include "json_types.h"
@@ -18,7 +19,7 @@ JsonNode* json_array_impl(JsonNode**); // shouldn't be called, use the macro wra
 #define json_array(...) json_array_impl((JsonNode*[]){__VA_ARGS__, NULL})
 #define json_emptyArray() jnode_create(NULL, (JsonValue){JSON_ARRAY, 0})
 JsonNode* json_bool(bool);
-JsonNode* json_int(int);
+JsonNode* json_int(int64_t);
 JsonNode* json_real(double);
 JsonNode* json_null(void);
 JsonNode* json_string(char*);
