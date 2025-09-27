@@ -33,7 +33,6 @@ static parser _null;
 
 // Helpers
 static parserFunc _getParser(char character);
-static char* _scanUntil(char*, char*, ptrdiff_t, ptrdiff_t*);
 static char* _scanWhile(bool (*predicate)(char), char*, ptrdiff_t, ptrdiff_t*);
 
 
@@ -218,14 +217,38 @@ static JsonNode* _boolean(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return jnode;
 }
 
-// TODO: _string should unescape characters
+// TODO: _string should unescape hex codes (\uA25D)
 static JsonNode* _string(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	json_buf_get(buffer, length, offset); // Not json_bufexpect because at this point we know it's '"'
-	char* string = _scanUntil("\"", buffer, length, offset);
-	DEBUG("( \"%s\" ) parsed", string);
+	ptrdiff_t originalOffset = *offset;
+	ptrdiff_t bytesToAlloc = 0;
+	char currentChar;
+	while ((currentChar = json_buf_get(buffer, length, offset)) != '"') {
+		if (currentChar == '\\') {
+			bytesToAlloc++;
+			// TODO: support hexcodes
+			json_buf_get(buffer, length, offset); // Discard the next character
+			continue;
+		}
+		bytesToAlloc++;
+	}
+	char* string = json_allocator.alloc(bytesToAlloc + 1, json_allocator.context);
 	if (!string)
 		return json_node_create("JSON_ERROR: out of memory ", (JsonValue){JSON_ERROR, .string = NULL});
-	json_buf_get(buffer, length, offset);
+	ptrdiff_t i = 0;
+	*offset = originalOffset;
+	while ((currentChar = json_buf_get(buffer, length, offset)) != '"') {
+		char unescapedChar = json_utils_unescapeChar(buffer + *offset - 1);
+		if (unescapedChar != '\0') {
+			string[i++] = unescapedChar;
+			// TODO: support hexcodes
+			json_buf_get(buffer, length, offset); // Discard the next character
+			continue;
+		}
+		string[i++] = currentChar;
+	}
+	string[i] = '\0';
+	DEBUG("( \"%s\" ) parsed", string);
 	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
 }
 
@@ -286,25 +309,6 @@ static parserFunc _getParser(char character) {
 			}
 			return _error;
 	}
-}
-
-char* _scanUntil(char* delimiters, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
-	if (!delimiters || !buffer || !offset) return NULL;
-	ptrdiff_t max = JSON_DYNAMIC_ARRAY_CAPACITY;
-	ptrdiff_t current = 0;
-	char* string = json_allocator.alloc(max, json_allocator.context);
-	if (!string) {
-		json_error_reportCritical("JSON_ERROR: _scanUntil failed, alloc returned NULL");
-		return NULL;
-	}
-	char currentChar;
-	while (*offset < length && !strchr(delimiters, currentChar = json_buf_get(buffer, length, offset))) {
-		json_utils_ensureCapacity(&string, &max, current + 1);
-		string[current++] = currentChar;
-	}
-	json_buf_unget(currentChar, buffer, length, offset);
-	string[current] = '\0';
-	return string; 
 }
 
 char* _scanWhile(bool (*predicate)(char), char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
