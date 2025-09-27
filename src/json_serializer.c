@@ -156,9 +156,12 @@ static void _serializeCondensed(JsonNode* node, char** buffer, ptrdiff_t* length
 			appendStr(buffer, length, offset, tempBuffer);
 			break;
 		}
-		case JSON_STRING:
-			appendStr(buffer, length, offset, "\"", node->value.string, "\"");
+		case JSON_STRING: {
+			char* escapedString = json_utils_toEscaped(node->value.string);
+			appendStr(buffer, length, offset, "\"", escapedString, "\"");
+			json_allocator.free(escapedString, strlen(escapedString), json_allocator.context);
 			break;
+		}
 		case JSON_BOOL:
 			appendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
 			break;
@@ -239,9 +242,12 @@ static void _serializePretty
 			appendStr(buffer, length, offset, tempBuffer);
 			break;
 		}
-		case JSON_STRING:
-			appendStr(buffer, length, offset, "\"", node->value.string, "\"");
+		case JSON_STRING: {
+			char* escapedString = json_utils_toEscaped(node->value.string);
+			appendStr(buffer, length, offset, "\"", escapedString, "\"");
+			json_allocator.free(escapedString, strlen(escapedString), json_allocator.context);
 			break;
+		}
 		case JSON_BOOL:
 			appendStr(buffer, length, offset, node->value.boolean ? "true" : "false");
 			break;
