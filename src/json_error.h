@@ -11,8 +11,6 @@ extern void (*json_error_onMaxErrors)(void);
 
 void json_error_report(char*);
 void json_error_reportCritical(char*);
-void json_error_extract(JsonNode*);
-void json_error_extractAndFree(JsonNode*);
 void json_error_reset(void);
 ptrdiff_t json_error_count(void);
 char* json_error_pop(void); // pop the most recent error off the error stack

@@ -31,16 +31,6 @@ void json_error_reportCritical(char* errorMsg) {
 	_reportError(errorMsg);
 }
 
-void json_error_extract(JsonNode* node) {
-	char* errorMsg = json_toString(node, JSON_WRITE_PRETTY);
-	json_error_report(errorMsg);
-}
-
-void json_error_extractAndFree(JsonNode* node) {
-	json_error_extract(node);
-	json_node_free(node);
-}
-
 void json_error_reset(void) {
 	ptrdiff_t i;
 	for (i = 0; i < errorStack.count; i++) {
