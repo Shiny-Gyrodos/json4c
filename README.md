@@ -100,11 +100,13 @@ Here is an example of the different ways you can parse JSON and fetch data from 
 int main(int argc, char* argv[]) {
 	if (argc < 2) return 1;
 	
+	// Using json_parse to parse a buffer of bytes/characters, and json_property to select a field.
 	JsonNode* person = json_parse(argv[1], strlen(argv[1])); // { "name": "Lucas", "age": 34 }
 	JsonNode* age = json_property(person, "age");
 	printf("age = %d\n", AS_INT(age)); // Outputs "age = 34"
     json_node_free(person);
 	
+	// Using json_parseFile to parse JSON data, then json_index to get the data at an index.
 	JsonNode* primes = json_parseFile("testdata/primes.json"); // [ 1, 3, 5, 7, 11, 13, 17, 23 ]
 	JsonNode* five = json_index(primes, 2);
 	printf("the third prime number is %d\n", AS_INT(five));
@@ -125,7 +127,9 @@ int main(int argc, char* argv[]) {
 			]
 		}
 	*/
+	// Using json_parseFile to parse JSON data, the json_get to traverse the JSON tree.
 	JsonNode* house = json_parseFile("testdata/house.json");
+	// json_get(house, "owners", 2) is equivalent to json_index(json_property(house, "owners"), 2)
 	JsonNode* carrolGretchen = json_get(house, "owners", 2);
 	printf("the third owner of the house was %s", AS_STRING(carrolGretchen));
     json_node_free(house);
@@ -259,6 +263,62 @@ int main(void) {
 
 Just make sure to set the allocator before any JSON allocations are made, and don't change it before all are freed.
 
+## Error Handling
+
+All errors that occur while parsing/serializing data are recorded to an internal error stack.
+Some can be recovered from by the user of the library, for example checking if functions that return pointers returned NULL.
+Some errors however are considered 'critical', like running out of memory.
+The `json_error` API provided three 'events' (just global function pointers) that you can assign to functions that gracefully exit your program.
+The function pointer globals are:
+
+~~~c
+extern void (*json_error_onErrorReported)(char* errorMsg);
+extern void (*json_error_onCriticalErrorReported)(char* errorMsg);
+extern void (*json_error_onMaxErrors)(void);
+~~~
+
+Still confused? Here is how to take advantage of them.
+
+~~~c
+#include <stdio.h>
+#include "json4c/json.h"
+
+#define YOUR_EXIT_CODE 1
+
+void onJsonError(char* errorMsg) {
+	fputs(errorMsg, stderr);
+}
+
+void onCriticalJsonError(char* errorMsg) {
+	// We could just print errorMsg, but there is a better option.
+	(void)errorMsg;
+	json_error_printAll(stderr); // This includes errorMsg
+	exit(YOUR_EXIT_CODE);
+}
+
+void configureLibraries(void) {
+	json_error_onErrorReported = onJsonError;
+	json_error_onCriticalErrorReported = onCriticalJsonError;
+}
+
+int main(int argc, char* argv[]) {
+	if (argc < 2) return 1;
+	
+	configureLibraries();
+	// If we ran out of memory parsing, onCriticalJsonError would be called.
+	JsonNode* node = json_parse(argv[1]);
+	
+	if (IS_ERROR(node)) {
+		// The buffer contained invalid data, onJsonError would have been called during the parse.
+	} else {
+		// Successful parse.
+	}
+	
+	json_node_free(node);
+	
+	return 0;
+}
+~~~
 
 
 
