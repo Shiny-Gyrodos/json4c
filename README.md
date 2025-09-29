@@ -1,7 +1,7 @@
 ﻿JSON4C
 ======
 
-**WARNING**: This library's parser is not yet compliant to the JSON standard in the way it parses numbers (it is too lenient) and strings (escape codes aren't handled correctly).
+**WARNING**: This library does not yet support escaped hex codes.
 
 A simple, flexible JSON library written in pure C99.
 
