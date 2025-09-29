@@ -53,10 +53,8 @@ char json_utils_unescapeChar(char* bytes) {
 			return '/';
 		case '\\':
 			return '\\';
-		case 'u':
-			json_error_report("JSON_ERROR: json_utils_unescapeChar failed, escaped hex digits not yet supported");
-			return '\0';
 	}
+	json_error_report("JSON_ERROR: json_utils_unescapeChar returned '\\0', invalid input");
 	return '\0';
 }
 
@@ -84,12 +82,12 @@ char* json_utils_escapeChar(char character) {
 		case '"':
 			return strcpy(string, "\\\"");
 	}
-	json_error_report("JSON_ERROR: json_utils_escapeChar failed, escaping hex digits isn't yet supported");
+	json_error_report("JSON_ERROR: json_utils_escapeChar returned NULL, invalid input");
 	json_allocator.free(string, 3, json_allocator.context);
 	return NULL;
 }
 
-bool _isEscapable(char c) {
+static bool _isEscapable(char c) {
 	return c == '\t' || c == '\r' || c == '\n' || c == '\b' || c == '\f' || c == '/' || c == '\\';
 }
 
@@ -100,8 +98,7 @@ char* json_utils_toEscaped(char* string) {
 		if (_isEscapable(string[i]))
 			addedMemory++;
 	}
-	ptrdiff_t length = strlen(string);
-	char* newString = json_allocator.alloc(length + addedMemory + 1, json_allocator.context);
+	char* newString = json_allocator.alloc(i + addedMemory + 1, json_allocator.context);
 	if (!newString)
 		json_error_reportCritical("JSON_ERROR: json_utils_toEscaped failed, alloc returned NULL");
 	ptrdiff_t offset = 0;
