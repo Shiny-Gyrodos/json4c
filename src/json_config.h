@@ -5,7 +5,7 @@
 #ifdef JSON_DEBUG
 #define DEBUG(msg, ...) printf("[%s:%d] " msg "\n", __FILE__, __LINE__,##__VA_ARGS__)
 #else
-#define DEBUG(msg) // Compile to nothing
+#define DEBUG(...) // Compile to nothing
 #endif
 
 #ifndef JSON_BUFFER_CAPACITY
