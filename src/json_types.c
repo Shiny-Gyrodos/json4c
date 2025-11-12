@@ -5,6 +5,10 @@
 #include "json_utils.h"
 #include "json_config.h"
 
+
+static bool _safeStringEqual(const char*, const char*);
+
+
 inline bool json_type_isComplex(JsonType type) {
 	return type == JSON_OBJECT || type == JSON_ARRAY;
 }
@@ -55,6 +59,37 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 	parent->value.jcomplex.count++;
 }
 
+bool json_node_equals(const JsonNode* node1, const JsonNode* node2) {
+	// Immediate checks
+	if (node1 == node2) return true;
+	if (node1->value.type != node2->value.type) return false;
+	if (!_safeStringEqual(node1->identifier, node2->identifier)) return false;
+	
+	if (json_type_isComplex(node1->value.type)) {
+		if (node1->value.jcomplex.count != node2->value.jcomplex.count) return false;
+		for (ptrdiff_t i = 0; i < node1->value.jcomplex.count; i++) {
+			if (!json_node_equals(node1->value.jcomplex.nodes[i], node2->value.jcomplex.nodes[i]))
+				return false;
+		}
+		return true;
+	}
+	
+	switch (node1->value.type) {
+		case JSON_INT:
+			return node1->value.integer == node2->value.integer;
+		case JSON_REAL:
+			return node1->value.real == node2->value.real;
+		case JSON_BOOL:
+			return node1->value.boolean == node2->value.boolean;
+		case JSON_STRING:
+			// not _safeStringEqual becuase value.string should never be NULL
+			return strcmp(node1->value.string, node2->value.string) == 0;
+		default:
+			json_error_report("JSON_ERROR: unexpected node type in 'json_node_equals'");
+			return false;
+	}
+}
+
 void json_node_free(JsonNode* jnode) {
 	if (!jnode) return;
 	if (json_type_isComplex(jnode->value.type)) {
@@ -74,4 +109,11 @@ void json_node_free(JsonNode* jnode) {
 		json_allocator.free(jnode->identifier, strlen(jnode->identifier), json_allocator.context);		
 	}
 	json_allocator.free(jnode, sizeof(JsonNode), json_allocator.context);
+}
+
+
+static bool _safeStringEqual(const char* s1, const char* s2) {
+	if (!s1 && !s2) return true;
+	if (!s1 || !s2) return false;
+	return strcmp(s1, s2) == 0;
 }

@@ -63,6 +63,7 @@ bool json_type_isComplex(JsonType);
 
 JsonNode* json_node_create(char*, JsonValue);
 void json_node_append(JsonNode*, JsonNode*);
+bool json_node_equals(const JsonNode*, const JsonNode*);
 void json_node_free(JsonNode*);
 
 #endif // JSON4C_TYPES
