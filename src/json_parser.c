@@ -3,6 +3,8 @@
 #include <math.h.>
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "json_parser.h"
 #include "json_error.h"

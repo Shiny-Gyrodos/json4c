@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "json_utils.h"
 #include "json_allocator.h"
 #include "json_error.h"

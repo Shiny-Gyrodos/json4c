@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <math.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "json_error.h"
 #include "json_config.h"

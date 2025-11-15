@@ -1,7 +1,6 @@
 #include <stddef.h>
 
 #include "json_config.h"
-#include "json_serializer.h"
 #include "json_error.h"
 
 struct {
