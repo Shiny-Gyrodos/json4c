@@ -118,9 +118,9 @@ JsonNode* json_get_impl(JsonNode* root, ...) {
 
 // Predicates
 static bool _numberPredicate(char c) { // TODO: fix bandaid fix
-	return c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-' || isdigit(c); 
+	return c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-' || isdigit((unsigned char)c); 
 }
-static bool _letterPredicate(char c) { return isalpha(c); }
+static bool _letterPredicate(char c) { return isalpha((unsigned char)c); }
 static bool _errorPredicate(char c) { return _getParser(c) == _error; }
 
 static JsonNode* _error(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
