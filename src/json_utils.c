@@ -16,6 +16,7 @@ void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity
 		return;
 	}
 	*ptr = temp;
+	*capacity *= JSON_DYNAMIC_ARRAY_GROW_BY;
 }
 
 void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char** strings) {
