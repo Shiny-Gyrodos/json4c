@@ -15,61 +15,6 @@ static void _serializeCondensed(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*);
 static void _serializePretty(JsonNode*, char**, ptrdiff_t*, ptrdiff_t*, char*, char*);
 
 
-JsonNode* json_object_impl(void** ptrs) {
-	JsonNode* jobject = json_node_create(NULL, (JsonValue){JSON_OBJECT, {0}});
-	ptrdiff_t i;
-	char* identifier = NULL;
-	for (i = 0; ptrs[i]; i++) {
-		if (i % 2 == 0) { // starting with the first, every other value is an identifier (char*)
-			identifier = (char*)ptrs[i];
-		} else {
-			JsonNode* jnode = (JsonNode*)ptrs[i];
-			int length = strlen(identifier);
-			void* temp = json_allocator.alloc(length + 1, json_allocator.context);
-			if (!temp) {
-				json_node_free(jobject);
-				json_error_reportCritical("JSON_ERROR: json_object failed, alloc returned NULL");
-				return NULL;
-			}
-			jnode->identifier = temp;
-			strcpy(jnode->identifier, identifier);
-			identifier = NULL;
-			json_node_append(jobject, jnode);
-		}
-	}
-	return jobject;
-}
-
-JsonNode* json_array_impl(JsonNode** jnodes) {
-	JsonNode* jarray = json_node_create(NULL, (JsonValue){JSON_ARRAY, {0}});
-	ptrdiff_t i;
-	for (i = 0; jnodes[i]; i++) {
-		json_node_append(jarray, jnodes[i]);
-	}
-	return jarray;
-}
-
-inline JsonNode* json_bool(bool boolean) {
-	return json_node_create(NULL, (JsonValue){JSON_BOOL, .boolean = boolean});
-}
-
-inline JsonNode* json_int(int64_t integer) {
-	return json_node_create(NULL, (JsonValue){JSON_INT, .integer = integer});
-}
-
-inline JsonNode* json_real(double real) {
-	return json_node_create(NULL, (JsonValue){JSON_REAL, .real = real});
-}
-
-inline JsonNode* json_null(void) {
-	return json_node_create(NULL, (JsonValue){JSON_NULL, {0}});
-}
-
-inline JsonNode* json_string(char* string) {
-	return json_node_create(NULL, (JsonValue){JSON_STRING, .string = string});
-}
-
-
 bool json_write(JsonNode* node, char* buffer, ptrdiff_t length, enum JsonWriteOption option) {
 	ptrdiff_t jsonLength = length;
 	ptrdiff_t jsonOffset = 0;

@@ -58,6 +58,7 @@ typedef struct JsonNode {
 #define IS_REAL(jnode)		((jnode) && (jnode)->value.type == JSON_REAL)
 #define IS_BOOL(jnode)		((jnode) && (jnode)->value.type == JSON_BOOL)
 #define IS_STRING(jnode)	((jnode) && (jnode)->value.type == JSON_STRING)
+#define IS_NULL(jnode)		((jnode) && (jnode)->value.type == JSON_NULL)
 #define IS_ARRAY(jnode)		((jnode) && (jnode)->value.type == JSON_ARRAY)
 #define IS_OBJECT(jnode)	((jnode) && (jnode)->value.type == JSON_OBJECT)
 #define IS_ERROR(jnode)		((jnode) && (jnode)->value.type == JSON_ERROR)
@@ -69,5 +70,17 @@ void json_node_append(JsonNode*, JsonNode*);
 ptrdiff_t json_node_childrenCount(const JsonNode*);
 bool json_node_equals(const JsonNode*, const JsonNode*);
 void json_node_free(JsonNode*);
+
+JsonNode* json_object_impl(void**); // shouldn't be called, use the macro wrapper instead
+#define json_object(...) json_object_impl((void*[]){__VA_ARGS__, NULL})
+#define json_emptyObject() jnode_create(NULL, (JsonValue){JSON_OBJECT, 0})
+JsonNode* json_array_impl(JsonNode**); // shouldn't be called, use the macro wrapper instead
+#define json_array(...) json_array_impl((JsonNode*[]){__VA_ARGS__, NULL})
+#define json_emptyArray() jnode_create(NULL, (JsonValue){JSON_ARRAY, 0})
+JsonNode* json_bool(bool);
+JsonNode* json_int(int64_t);
+JsonNode* json_real(double);
+JsonNode* json_null(void);
+JsonNode* json_string(char*);
 
 #endif // JSON4C_TYPES
