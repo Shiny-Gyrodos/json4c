@@ -50,6 +50,9 @@ typedef struct JsonNode {
 #define AS_STRING(jnode)	((jnode)->value.string)
 #define AS_ARRAY(jnode)		((jnode)->value.jcomplex)
 #define AS_OBJECT(jnode)	((jnode)->value.jcomplex)
+// This one exists mainly for implementation clarity
+#define AS_COMPLEX(jnode)	((jnode)->value.jcomplex)
+
 // Tests a JsonNode*
 #define IS_INT(jnode)		((jnode) && (jnode)->value.type == JSON_INT)
 #define IS_REAL(jnode)		((jnode) && (jnode)->value.type == JSON_REAL)
@@ -63,6 +66,7 @@ bool json_type_isComplex(JsonType);
 
 JsonNode* json_node_create(char*, JsonValue);
 void json_node_append(JsonNode*, JsonNode*);
+ptrdiff_t json_node_childrenCount(const JsonNode*);
 bool json_node_equals(const JsonNode*, const JsonNode*);
 void json_node_free(JsonNode*);
 

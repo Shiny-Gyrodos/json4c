@@ -59,6 +59,17 @@ void json_node_append(JsonNode* parent, JsonNode* child) {
 	parent->value.jcomplex.count++;
 }
 
+// NOTE: AS_OBJECT and AS_ARRAY can be used interchangeably,
+// since in both cases the data is represented in the same way.
+ptrdiff_t json_node_childrenCount(const JsonNode* node) {
+	if (!node || !json_type_isComplex(node->value.type)) return 0;
+	ptrdiff_t count = AS_COMPLEX(node).count;
+	for (ptrdiff_t i = 0; i < AS_COMPLEX(node).count; i++) {
+		count += json_node_childrenCount(AS_COMPLEX(node).nodes[i]);
+	}
+	return count;
+}
+
 bool json_node_equals(const JsonNode* node1, const JsonNode* node2) {
 	// Immediate checks
 	if (node1 == node2) return true;
