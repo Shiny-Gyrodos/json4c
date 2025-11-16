@@ -1,7 +1,7 @@
 ﻿JSON4C
 ======
 
-**WARNING**: This library does not yet support escaped hex codes.
+**WARNING**: This library does not yet support characters in strings outside of the ASCII range.
 
 A simple, flexible JSON library written in pure C99.
 
@@ -82,9 +82,9 @@ IS_INT(node)	AS_INT(node)
 IS_REAL(node)	AS_REAL(node)
 IS_STRING(node)	AS_STRING(node)
 IS_BOOL(node) 	AS_BOOL(node)
-IS_NULL(node) 	AS_NULL(node)
-IS_ARRAY(node) 	AS_ARRAY(node)
-IS_OBJECT(node) AS_OBJECT(node)
+IS_NULL(node) 	AS_ARRAY(node)
+IS_ARRAY(node) 	AS_OBJECT(node)
+IS_OBJECT(node)
 IS_ERROR(node) 	
 ~~~
 
@@ -144,7 +144,6 @@ There are a handful of functions the library provides for serialization. Below a
 
 ~~~c
 // Creating
-
 JsonNode* json_object(void**);
 JsonNode* json_emptyObject(void);
 JsonNode* json_array(JsonNode**);
@@ -156,7 +155,6 @@ JsonNode* json_null(void);
 JsonNode* json_string(char*);
 
 // Writing
-
 bool json_write(JsonNode* node, char* buffer, ptrdiff_t length, enum JsonWriteOption option);
 void json_writeFile(JsonNode* node, char* path, enum JsonWriteOption option);
 // NOTE: You are responsible for freeing the char* returned by these functions.
@@ -319,6 +317,7 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 ~~~
+
 
 
 
