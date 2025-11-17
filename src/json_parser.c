@@ -70,53 +70,6 @@ JsonNode* json_parseFile(char* path) {
 	return json_parse(buffer, length);
 }
 
-JsonNode* json_property(JsonNode* jnode, char* identifier) {
-	if (!jnode || !identifier || jnode->value.type != JSON_OBJECT) return NULL;
-	ptrdiff_t i;
-	for (i = 0; i < jnode->value.jcomplex.count; i++) {
-		if (strcmp(jnode->value.jcomplex.nodes[i]->identifier, identifier) == 0) {
-			return jnode->value.jcomplex.nodes[i];
-		}
-	}
-	return NULL;
-}
-
-JsonNode* json_index(JsonNode* jnode, ptrdiff_t index) {
-	if (!jnode || jnode->value.type != JSON_ARRAY || index >= jnode->value.jcomplex.count) 
-		return NULL;
-	return jnode->value.jcomplex.nodes[index];
-}
-
-#define TERMINATOR -1
-JsonNode* json_get_impl(JsonNode* root, ...) {
-	va_list args;
-	va_start(args, root);
-	while (true) {
-		if (!root) {
-			va_end(args);
-			return NULL;
-		}
-		if (root->value.type == JSON_OBJECT) {
-			char* identifier = va_arg(args, char*);
-			if (identifier == (char*)TERMINATOR) 
-				break;
-			root = json_property(root, identifier);
-		} else if (root->value.type == JSON_ARRAY) {
-			intptr_t index = va_arg(args, intptr_t);
-			if (index == TERMINATOR) 
-				break;
-			root = json_index(root, index);
-		} else {
-			if (va_arg(args, intptr_t) == TERMINATOR) 
-				break;
-			va_end(args);
-			return NULL;
-		}
-	}
-	va_end(args);
-	return root;
-}
-#undef TERMINATOR
 
 // Predicates
 static bool _numberPredicate(char c) { // TODO: fix bandaid fix
