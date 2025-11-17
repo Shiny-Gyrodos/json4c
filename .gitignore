@@ -1,4 +1,5 @@
 main.c
 main.exe
 main_debug.exe
+runTests.exe
 testdata/
