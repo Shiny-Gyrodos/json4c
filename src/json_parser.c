@@ -53,7 +53,7 @@ JsonNode* json_parse(char* buffer, ptrdiff_t length) {
 JsonNode* json_parseFile(char* path) {
 	FILE* jsonStream = fopen(path, "rb");
 	if (!jsonStream) {
-		json_error_report("JSON_ERROR: file not found, in json_parseFile");
+		json_error_report("JSON_ERROR: fopen returned NULL, in json_parseFile");
 		return NULL;
 	}
 	fseek(jsonStream, 0, SEEK_END);
