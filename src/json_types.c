@@ -77,9 +77,9 @@ bool json_node_equals(const JsonNode* node1, const JsonNode* node2) {
 	if (!_safeStringEqual(node1->identifier, node2->identifier)) return false;
 	
 	if (json_type_isComplex(node1->value.type)) {
-		if (node1->value.jcomplex.count != node2->value.jcomplex.count) return false;
-		for (ptrdiff_t i = 0; i < node1->value.jcomplex.count; i++) {
-			if (!json_node_equals(node1->value.jcomplex.nodes[i], node2->value.jcomplex.nodes[i]))
+		if (AS_COMPLEX(node1).count != AS_COMPLEX(node2).count) return false;
+		for (ptrdiff_t i = 0; i < AS_COMPLEX(node1).count; i++) {
+			if (!json_node_equals(AS_COMPLEX(node1).nodes[i], AS_COMPLEX(node2).nodes[i]))
 				return false;
 		}
 		return true;
@@ -87,14 +87,16 @@ bool json_node_equals(const JsonNode* node1, const JsonNode* node2) {
 	
 	switch (node1->value.type) {
 		case JSON_INT:
-			return node1->value.integer == node2->value.integer;
+			return AS_INT(node1) == AS_INT(node2);
 		case JSON_REAL:
-			return node1->value.real == node2->value.real;
+			return AS_REAL(node1) == AS_REAL(node2);
 		case JSON_BOOL:
-			return node1->value.boolean == node2->value.boolean;
+			return AS_BOOL(node1) == AS_BOOL(node2);
 		case JSON_STRING:
 			// not _safeStringEqual becuase value.string should never be NULL
-			return strcmp(node1->value.string, node2->value.string) == 0;
+			return strcmp(AS_STRING(node1), AS_STRING(node2)) == 0;
+		case JSON_NULL:
+			return true;
 		default:
 			json_error_report("JSON_ERROR: unexpected node type in 'json_node_equals'");
 			return false;
