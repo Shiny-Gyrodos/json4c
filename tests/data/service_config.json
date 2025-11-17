@@ -1,0 +1,13 @@
+{
+	"super_secret_key": "...",
+	"telemetry": false,
+	"analytics": true,
+	"ai_nonsense_amount": 100
+	"supported_platforms": [
+		"Mac",
+		"Windows",
+		"Unix-Based",
+		"Android",
+		"Web"
+	]
+}
