@@ -15,10 +15,6 @@
 
 // TODO: String parser needs extra work to support escaped characters.
 // TODO: Remove _scanUntil and replace it with a function tailored to string parsing
-// TODO: _error should return something some JsonNode* with type of JSON_ERROR
-// and _skip should return NULL instead as to not waste resources.
-// the library should provide a function for seeing if a parse was successful,
-// and if not, extracting the error.
 
 
 // Parsers

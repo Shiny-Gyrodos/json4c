@@ -7,9 +7,10 @@
 
 void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity, ptrdiff_t count) {
 	if (count < *capacity || !ptr || !(*ptr)) return;
+	ptrdiff_t newCapacity = *capacity == 1 ? 8 : *capacity * JSON_DYNAMIC_ARRAY_GROW_BY;
 	void* temp = json_allocator.realloc(
 		*ptr,
-		*capacity * size * JSON_DYNAMIC_ARRAY_GROW_BY,
+		newCapacity * size,
 		*capacity * size,
 		json_allocator.context
 	);
@@ -18,7 +19,7 @@ void json_utils_ensureCapacity_impl(void** ptr, size_t size, ptrdiff_t* capacity
 		return;
 	}
 	*ptr = temp;
-	*capacity *= JSON_DYNAMIC_ARRAY_GROW_BY;
+	*capacity = newCapacity;
 }
 
 void json_utils_dynAppendStr_impl(char** buffer, ptrdiff_t* length, ptrdiff_t* offset, char** strings) {
@@ -56,9 +57,10 @@ char json_utils_unescapeChar(char* bytes) {
 			return '/';
 		case '\\':
 			return '\\';
+		default:
+			json_error_report("JSON_ERROR: json_utils_unescapeChar returned '\\0', invalid input");
+			return '\0';
 	}
-	json_error_report("JSON_ERROR: json_utils_unescapeChar returned '\\0', invalid input");
-	return '\0';
 }
 
 char* json_utils_escapeChar(char character) {
@@ -84,10 +86,11 @@ char* json_utils_escapeChar(char character) {
 			return strcpy(string, "\\/");
 		case '"':
 			return strcpy(string, "\\\"");
+		default:
+			json_error_report("JSON_ERROR: json_utils_escapeChar returned NULL, invalid input");
+			json_allocator.free(string, 3, json_allocator.context);
+			return NULL;
 	}
-	json_error_report("JSON_ERROR: json_utils_escapeChar returned NULL, invalid input");
-	json_allocator.free(string, 3, json_allocator.context);
-	return NULL;
 }
 
 static bool _isEscapable(char c) {
@@ -102,8 +105,10 @@ char* json_utils_toEscaped(char* string) {
 			addedMemory++;
 	}
 	char* newString = json_allocator.alloc(i + addedMemory + 1, json_allocator.context);
-	if (!newString)
+	if (!newString) {
 		json_error_reportCritical("JSON_ERROR: json_utils_toEscaped failed, alloc returned NULL");
+		return NULL;
+	}
 	ptrdiff_t offset = 0;
 	for (i = 0; string[i] != '\0'; i++, offset++) {
 		if (!_isEscapable(string[i])) {
@@ -151,7 +156,6 @@ inline char json_buf_get(char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return *offset < length ? buffer[(*offset)++] : buffer[length - 1];
 }
 
-// TODO: It isn't clear enough from the return value when this function fails.
 inline char json_buf_unget(char c, char* buffer, ptrdiff_t length, ptrdiff_t* offset) {
 	return *offset - 1 >= 0 && *offset - 1 < length ? buffer[--(*offset)] = c : '\0';
 }
